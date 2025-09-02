@@ -32,6 +32,8 @@ let sunMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null =
 
 let moonOrbit1: THREE.Group | null = null;
 let moon1: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
+let moon1Rings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null =
+  null;
 let moonOrbit2: THREE.Group | null = null;
 let moon2: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null; // New variables for moons
 
@@ -181,6 +183,9 @@ const moonVertexShader = `
         `;
 const moonFragmentShader = `
             uniform float uTime;
+            uniform vec3 uTintColor;
+            uniform float uTintStrength; // 0..1
+            uniform float uBrightness; // overall multiplier
             varying vec3 vPosition;
             // --- Noise functions for moon surface ---
             vec3 random3(vec3 st) {
@@ -212,20 +217,55 @@ const moonFragmentShader = `
                 }
                 return value;
             }
-            void main() {
+      void main() {
                 vec3 noisyPos = normalize(vPosition) * 4.0; // Scale for crater-like features
                 float n = fbm3(noisyPos);
                 // Create a sharp contrast for crater edges
                 float craters = smoothstep(0.0, 0.1, abs(n));
-                vec3 mariaColor = vec3(0.25, 0.25, 0.3); // Dark gray "seas"
-                vec3 highlandColor = vec3(0.6, 0.6, 0.6); // Lighter gray highlands
+        vec3 mariaColor = vec3(0.30, 0.30, 0.34); // Dark gray "seas"
+        vec3 highlandColor = vec3(0.8, 0.8, 0.8); // Lighter gray highlands (brighter)
                 
                 // Mix colors based on noise, and use the crater mask to add highlights
                 vec3 finalColor = mix(mariaColor, highlandColor, smoothstep(-0.2, 0.2, n));
-                finalColor += vec3(1.0) * craters * 0.1;
-                gl_FragColor = vec4(finalColor, 1.0);
+        finalColor += vec3(1.0) * craters * 0.1;
+        // Apply tint and brightness
+        finalColor = mix(finalColor, uTintColor, clamp(uTintStrength, 0.0, 1.0));
+        finalColor *= uBrightness;
+        gl_FragColor = vec4(finalColor, 1.0);
             }
         `;
+
+// --- Ring GLSL for Saturn-like rings ---
+const ringVertexShader = `
+      varying vec2 vPos;
+      void main(){
+        vPos = position.xy; // local XY plane for ring geometry
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+const ringFragmentShader = `
+      varying vec2 vPos;
+      uniform vec3 uColor1;
+      uniform vec3 uColor2;
+      uniform float uInner;
+      uniform float uOuter;
+      uniform float uOpacity;
+      uniform float uBandFreq;
+      uniform float uBandContrast;
+      void main(){
+        float r = length(vPos);
+        if(r < uInner || r > uOuter){ discard; }
+        float radial = clamp((r - uInner) / max(0.0001, (uOuter - uInner)), 0.0, 1.0);
+        // Soft edges
+        float edge = 0.06; // relative softness
+        float alpha = smoothstep(0.0, edge, radial) * (1.0 - smoothstep(1.0 - edge, 1.0, radial));
+        // Banding pattern along radius
+        float bands = 0.5 + 0.5 * sin((radial * uBandFreq) * 6.28318530718);
+        bands = pow(bands, uBandContrast);
+        vec3 color = mix(uColor1, uColor2, bands);
+        gl_FragColor = vec4(color, alpha * uOpacity);
+      }
+    `;
 
 // --- Sun GLSL Shaders ---
 const sunSurfaceVertexShader = `
@@ -344,6 +384,16 @@ function init() {
   scene.add(moonOrbit1);
   // Add visual ellipse for moon 1 orbit
   moonOrbit1.add(createOrbitEllipse(MOON1_A, MOON1_B, 0x6688ff, 256, 0.35));
+  // Make moon1 whiter and give it rings
+  if (moon1) {
+    moon1.material.uniforms.uTintColor.value = new THREE.Color(0xffffff);
+    moon1.material.uniforms.uTintStrength.value = 0.7;
+    moon1.material.uniforms.uBrightness.value = 1.2;
+    moon1Rings = createMoonRings(7.0, 12.0);
+    moon1Rings.rotation.x = Math.PI / 2; // ring in XZ plane around the moon
+    moon1Rings.rotation.z = 0.35; // gentle tilt
+    moon1.add(moon1Rings);
+  }
 
   moonOrbit2 = new THREE.Group();
   moon2 = createMoon(3.5); // Create a smaller moon
@@ -548,12 +598,41 @@ function createMoon(
 ): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
   const moonGeometry = new THREE.SphereGeometry(size, 32, 32);
   const moonMaterial = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: {
+      uTime: { value: 0 },
+      uTintColor: { value: new THREE.Color(0xffffff) },
+      uTintStrength: { value: 0.0 },
+      uBrightness: { value: 1.0 },
+    },
     vertexShader: moonVertexShader,
     fragmentShader: moonFragmentShader,
   });
   const moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
   return moonMesh;
+}
+
+function createMoonRings(
+  innerRadius: number,
+  outerRadius: number
+): THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> {
+  const geom = new THREE.RingGeometry(innerRadius, outerRadius, 128, 1);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor1: { value: new THREE.Color(0xf4f0e8) }, // light cream
+      uColor2: { value: new THREE.Color(0xd8d6d0) }, // slightly darker bands
+      uInner: { value: innerRadius },
+      uOuter: { value: outerRadius },
+      uOpacity: { value: 0.85 },
+      uBandFreq: { value: 28.0 },
+      uBandContrast: { value: 2.0 },
+    },
+    vertexShader: ringVertexShader,
+    fragmentShader: ringFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  return new THREE.Mesh(geom, mat);
 }
 
 function createSun() {
