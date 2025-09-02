@@ -3,11 +3,22 @@
   "version": "1.0.0",
   "description": "A collaborative game where players can sculpt a planet.",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=public/app.js --loader:.png=dataurl --loader:.glsl=text"
+    "build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=public/app.js --loader:.png=dataurl --loader:.glsl=text",
+    "watch": "esbuild src/index.ts --bundle --sourcemap --outfile=public/app.js --watch --loader:.png=dataurl --loader:.glsl=text",
+    "serve": "serve public -l 5173",
+    "open": "wait-on http://localhost:5173 && open-cli http://localhost:5173",
+    "dev": "concurrently -c \"auto\" -n \"watch,serve,open\" \"yarn:watch\" \"yarn:serve\" \"yarn:open\"",
+    "format": "prettier --write \"**/*.{ts,js,json,md,css,html}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,html}\""
   },
   "devDependencies": {
     "@types/three": "^0.179.0",
+    "concurrently": "^8.2.2",
     "esbuild": "^0.25.9",
+    "prettier": "^3.3.3",
+    "open-cli": "^7.2.0",
+    "wait-on": "^7.2.0",
+    "serve": "^14.2.3",
     "typescript": "^5.9.2"
   },
   "dependencies": {

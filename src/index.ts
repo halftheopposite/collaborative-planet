@@ -16,24 +16,15 @@ let renderer!: THREE.WebGLRenderer;
 let controls!: OrbitControls;
 let clock!: THREE.Clock;
 
-let planetMesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> | null =
-  null;
+let planetMesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> | null = null;
 let sunOrbit: THREE.Group | null = null;
-let cloudMesh: THREE.Mesh<
-  THREE.SphereGeometry,
-  THREE.MeshBasicMaterial
-> | null = null;
-let atmosphereMesh: THREE.Mesh<
-  THREE.SphereGeometry,
-  THREE.ShaderMaterial
-> | null = null;
-let sunMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null =
-  null;
+let cloudMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
+let atmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
+let sunMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 
 let moonOrbit1: THREE.Group | null = null;
 let moon1: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
-let moon1Rings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null =
-  null;
+let moon1Rings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null = null;
 let moonOrbit2: THREE.Group | null = null;
 let moon2: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null; // New variables for moons
 
@@ -349,12 +340,7 @@ function init() {
   scene = new THREE.Scene();
   clock = new THREE.Clock();
   coordsDisplay = document.getElementById("coords-display");
-  camera = new THREE.PerspectiveCamera(
-    60,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(0, 0, 150);
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -410,9 +396,7 @@ function init() {
   renderer.domElement.addEventListener("pointerout", () => {
     if (planetMesh) planetMesh.material.uniforms.uCursorActive.value = 0.0;
   });
-  renderer.domElement.addEventListener("contextmenu", (e) =>
-    e.preventDefault()
-  );
+  renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
 }
 
 // --- Object Creation ---
@@ -468,10 +452,7 @@ function createPlanet() {
     vertexCount += (PLANET_SEGMENTS + 1) * (PLANET_SEGMENTS + 1);
   }
 
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(vertices, 3)
-  );
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
@@ -498,9 +479,7 @@ function createPlanet() {
 }
 
 function fixUvSeams(geometry: THREE.BufferGeometry): void {
-  const uv = geometry.attributes.uv as
-    | THREE.BufferAttribute
-    | THREE.InterleavedBufferAttribute;
+  const uv = geometry.attributes.uv as THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
   const index = geometry.index as THREE.BufferAttribute | null;
 
   if (!uv || !index) return;
@@ -529,11 +508,7 @@ function fixUvSeams(geometry: THREE.BufferGeometry): void {
 
 function createAtmosphere() {
   // Using a smooth SphereGeometry for the atmosphere, independent of the planet's mesh
-  const atmosphereGeometry = new THREE.SphereGeometry(
-    PLANET_RADIUS + 5,
-    128,
-    128
-  );
+  const atmosphereGeometry = new THREE.SphereGeometry(PLANET_RADIUS + 5, 128, 128);
 
   const atmosphereMaterial = new THREE.ShaderMaterial({
     vertexShader: atmosphereVertexShader,
@@ -593,9 +568,7 @@ function createOrbitEllipse(
   return new THREE.LineLoop(geometry, material);
 }
 
-function createMoon(
-  size: number
-): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
+function createMoon(size: number): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
   const moonGeometry = new THREE.SphereGeometry(size, 32, 32);
   const moonMaterial = new THREE.ShaderMaterial({
     uniforms: {
@@ -680,11 +653,7 @@ function createSun() {
   sunMesh.add(sunLight);
 
   // Place initial sun position on ellipse
-  sunMesh.position.set(
-    SUN_A * Math.cos(sunAngle),
-    0,
-    SUN_B * Math.sin(sunAngle)
-  );
+  sunMesh.position.set(SUN_A * Math.cos(sunAngle), 0, SUN_B * Math.sin(sunAngle));
 
   sunOrbit.add(sunMesh);
   // Add visual ellipse for sun path
@@ -701,10 +670,7 @@ function createStars() {
     vertices.push(x, y, z);
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(vertices, 3)
-  );
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
   const material = new THREE.PointsMaterial({
     color: 0x888888,
     size: 0.5,
@@ -716,27 +682,19 @@ function createStars() {
 function sculptPlanet(point: THREE.Vector3, direction: number): void {
   if (!point || !planetMesh) return;
   const localDisplacedPoint = planetMesh.worldToLocal(point.clone());
-  const localBasePoint = localDisplacedPoint
-    .normalize()
-    .multiplyScalar(PLANET_RADIUS);
+  const localBasePoint = localDisplacedPoint.normalize().multiplyScalar(PLANET_RADIUS);
   const heightAttribute = planetMesh.geometry.attributes.aHeight;
   const positionAttribute = planetMesh.geometry.attributes.position;
   let needsUpdate = false;
   const brushRadiusSq = SCULPT_RADIUS * SCULPT_RADIUS;
   for (let i = 0; i < positionAttribute.count; i++) {
-    const vertex = new THREE.Vector3().fromBufferAttribute(
-      positionAttribute,
-      i
-    );
+    const vertex = new THREE.Vector3().fromBufferAttribute(positionAttribute, i);
     const distSq = vertex.distanceToSquared(localBasePoint);
     if (distSq < brushRadiusSq) {
       const falloff = 1 - Math.sqrt(distSq) / SCULPT_RADIUS;
       const change = direction * SCULPT_STRENGTH * falloff;
       const oldHeight = heightAttribute.getX(i);
-      const newHeight = Math.max(
-        MIN_HEIGHT,
-        Math.min(MAX_HEIGHT, oldHeight + change)
-      );
+      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, oldHeight + change));
       if (oldHeight !== newHeight) {
         heightAttribute.setX(i, newHeight);
         needsUpdate = true;
@@ -762,13 +720,7 @@ function intersectDisplacedMesh(
   const uvAttribute = geometry.attributes.uv;
   const index = geometry.index;
 
-  if (
-    !index ||
-    !positionAttribute ||
-    !heightAttribute ||
-    !normalAttribute ||
-    !uvAttribute
-  )
+  if (!index || !positionAttribute || !heightAttribute || !normalAttribute || !uvAttribute)
     return null;
 
   const inverseMatrix = new THREE.Matrix4();
@@ -822,22 +774,13 @@ function intersectDisplacedMesh(
     vB.addScaledVector(nB, hB);
     vC.addScaledVector(nC, hC);
 
-    const intersection = ray.intersectTriangle(
-      vA,
-      vB,
-      vC,
-      false,
-      intersectionPoint
-    );
+    const intersection = ray.intersectTriangle(vA, vB, vC, false, intersectionPoint);
 
     if (intersection) {
       intersectionPointWorld.copy(intersection).applyMatrix4(matrixWorld);
       const distance = intersectionPointWorld.distanceTo(raycaster.ray.origin);
 
-      if (
-        closestIntersection === null ||
-        distance < closestIntersection.distance
-      ) {
+      if (closestIntersection === null || distance < closestIntersection.distance) {
         THREE.Triangle.getBarycoord(intersection, vA, vB, vC, barycentric);
         interpolatedUv
           .copy(uvA)
