@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import type { ScultAction } from "./actions";
-import { applyAction } from "./actions/apply";
 import { create as createCelestials, update as updateCelestials } from "./celestials";
+import { createActionLayer, type ActionLayer } from "./net/actionLayer";
 import { createPlanet, type Planet } from "./planet/planet";
 
 // Core Scene
@@ -13,6 +13,7 @@ let controls!: OrbitControls;
 let clock!: THREE.Clock;
 
 let planet: Planet | null = null;
+let actionLayer: ActionLayer | null = null;
 
 let isPointerDown: boolean = false;
 let pointerButton: number = -1;
@@ -50,6 +51,7 @@ function init() {
   planet = createPlanet();
   scene.add(planet.mesh);
   createCelestials(scene);
+  actionLayer = createActionLayer(planet);
 
   window.addEventListener("resize", onWindowResize);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -77,13 +79,13 @@ function onPointerDown(event: PointerEvent): void {
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
     const intersect = planet?.intersect(raycaster) ?? null;
-    if (intersect && planet) {
+    if (intersect && planet && actionLayer) {
       const action: ScultAction = {
         type: "scult",
         direction: pointerButton === 0 ? "up" : "down",
         position: { x: intersect.point.x, y: intersect.point.y, z: intersect.point.z },
       };
-      applyAction(planet, action);
+      actionLayer.dispatchLocal(action);
     }
     lastSculptTime = clock.getElapsedTime();
   }
@@ -132,13 +134,13 @@ function animate() {
   if (isPointerDown) {
     const sculptInterval = 1 / 30;
     if (currentTime - lastSculptTime > sculptInterval) {
-      if (intersect && planet) {
+      if (intersect && planet && actionLayer) {
         const action: ScultAction = {
           type: "scult",
           direction: pointerButton === 0 ? "up" : "down",
           position: { x: intersect.point.x, y: intersect.point.y, z: intersect.point.z },
         };
-        applyAction(planet, action);
+        actionLayer.dispatchLocal(action);
         lastSculptTime = currentTime;
       }
     }
