@@ -1,0 +1,7 @@
+# JS
+public/**/*.js
+public/**/*.js.map
+node_modules
+
+# Mac
+.DS_Store

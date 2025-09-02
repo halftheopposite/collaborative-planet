@@ -1,0 +1,44 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #000;
+}
+
+canvas {
+  display: block;
+}
+
+.instructions {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  font-family: sans-serif;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  max-width: 300px;
+  pointer-events: none; /* So it doesn't interfere with mouse events on the canvas */
+}
+
+.instructions h1 {
+  font-size: 1.5em;
+  margin: 0 0 10px 0;
+}
+
+.instructions p {
+  margin: 0;
+}
+
+.coords {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: white;
+  font-family: monospace;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: pre; /* Ensures newlines are rendered */
+}
