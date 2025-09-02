@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { OrbitControls } from "three/examples/jsm/Addons.js";
 
 // --- Configuration ---
 const PLANET_RADIUS = 60;
@@ -10,20 +10,56 @@ const SCULPT_RADIUS = 3;
 const SCULPT_STRENGTH = 0.75;
 
 // --- Core Scene Variables ---
-let scene, camera, renderer, controls, clock;
-let planetMesh, sunOrbit, cloudMesh, atmosphereMesh;
-let moonOrbit1, moon1, moonOrbit2, moon2; // New variables for moons
-let isPointerDown = false;
-let pointerButton = -1;
+let scene!: THREE.Scene;
+let camera!: THREE.PerspectiveCamera;
+let renderer!: THREE.WebGLRenderer;
+let controls!: OrbitControls;
+let clock!: THREE.Clock;
+
+let planetMesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> | null =
+  null;
+let sunOrbit: THREE.Group | null = null;
+let cloudMesh: THREE.Mesh<
+  THREE.SphereGeometry,
+  THREE.MeshBasicMaterial
+> | null = null;
+let atmosphereMesh: THREE.Mesh<
+  THREE.SphereGeometry,
+  THREE.ShaderMaterial
+> | null = null;
+let sunMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null =
+  null;
+
+let moonOrbit1: THREE.Group | null = null;
+let moon1: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
+let moonOrbit2: THREE.Group | null = null;
+let moon2: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null; // New variables for moons
+
+let isPointerDown: boolean = false;
+let pointerButton: number = -1;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
-let lastSculptTime = 0;
-let coordsDisplay;
+let lastSculptTime: number = 0;
+let coordsDisplay: HTMLElement | null = null;
 
 // --- New variables for moon physics ---
 let moon1Angle = 0;
 let moon2Angle = 0;
 let lastTime = 0;
+let sunAngle = 0;
+
+// --- Orbit parameters (semi-axes and Kepler-like speed constants) ---
+const MOON1_A = 130; // semi-major axis
+const MOON1_B = 110; // semi-minor axis
+const MOON1_K = 3600; // speed constant
+
+const MOON2_A = 180;
+const MOON2_B = 145;
+const MOON2_K = 4000;
+
+const SUN_A = 520; // doubled semi-major axis
+const SUN_B = 400; // doubled semi-minor axis
+const SUN_K = 12000; // much slower than moons
 
 // --- GLSL Shaders ---
 const vertexShader = `
@@ -306,12 +342,16 @@ function init() {
   moonOrbit1.add(moon1);
   moonOrbit1.rotation.x = 0.2; // Tilt the orbital plane
   scene.add(moonOrbit1);
+  // Add visual ellipse for moon 1 orbit
+  moonOrbit1.add(createOrbitEllipse(MOON1_A, MOON1_B, 0x6688ff, 256, 0.35));
 
   moonOrbit2 = new THREE.Group();
   moon2 = createMoon(3.5); // Create a smaller moon
   moonOrbit2.add(moon2);
   moonOrbit2.rotation.x = -0.3; // Tilt the orbital plane in the other direction
   scene.add(moonOrbit2);
+  // Add visual ellipse for moon 2 orbit
+  moonOrbit2.add(createOrbitEllipse(MOON2_A, MOON2_B, 0x88ff88, 256, 0.35));
 
   window.addEventListener("resize", onWindowResize);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -407,9 +447,13 @@ function createPlanet() {
   scene.add(planetMesh);
 }
 
-function fixUvSeams(geometry) {
-  const uv = geometry.attributes.uv;
-  const index = geometry.index;
+function fixUvSeams(geometry: THREE.BufferGeometry): void {
+  const uv = geometry.attributes.uv as
+    | THREE.BufferAttribute
+    | THREE.InterleavedBufferAttribute;
+  const index = geometry.index as THREE.BufferAttribute | null;
+
+  if (!uv || !index) return;
 
   for (let i = 0; i < index.count; i += 3) {
     const a = index.getX(i);
@@ -476,7 +520,32 @@ function createClouds() {
   scene.add(cloudMesh);
 }
 
-function createMoon(size) {
+// Create a thin ellipse line to visualize an orbit in the local XZ plane
+function createOrbitEllipse(
+  a: number,
+  b: number,
+  color: number = 0x666666,
+  segments: number = 256,
+  opacity: number = 0.3
+): THREE.LineLoop<THREE.BufferGeometry, THREE.LineBasicMaterial> {
+  const points: THREE.Vector3[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = (i / segments) * Math.PI * 2;
+    points.push(new THREE.Vector3(a * Math.cos(t), 0, b * Math.sin(t)));
+  }
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+  });
+  return new THREE.LineLoop(geometry, material);
+}
+
+function createMoon(
+  size: number
+): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
   const moonGeometry = new THREE.SphereGeometry(size, 32, 32);
   const moonMaterial = new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 } },
@@ -496,7 +565,7 @@ function createSun() {
     vertexShader: sunSurfaceVertexShader,
     fragmentShader: sunSurfaceFragmentShader,
   });
-  const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+  sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
 
   /* const coronaGeometry = new THREE.SphereGeometry(15 + 3, 64, 64);
             const coronaMaterial = new THREE.ShaderMaterial({
@@ -531,8 +600,16 @@ function createSun() {
 
   sunMesh.add(sunLight);
 
+  // Place initial sun position on ellipse
+  sunMesh.position.set(
+    SUN_A * Math.cos(sunAngle),
+    0,
+    SUN_B * Math.sin(sunAngle)
+  );
+
   sunOrbit.add(sunMesh);
-  sunMesh.position.x = 220;
+  // Add visual ellipse for sun path
+  sunOrbit.add(createOrbitEllipse(SUN_A, SUN_B, 0xffdd66, 256, 0.25));
   scene.add(sunOrbit);
 }
 
@@ -557,7 +634,7 @@ function createStars() {
   scene.add(stars);
 }
 
-function sculptPlanet(point, direction) {
+function sculptPlanet(point: THREE.Vector3, direction: number): void {
   if (!point || !planetMesh) return;
   const localDisplacedPoint = planetMesh.worldToLocal(point.clone());
   const localBasePoint = localDisplacedPoint
@@ -592,7 +669,10 @@ function sculptPlanet(point, direction) {
   }
 }
 
-function intersectDisplacedMesh(raycaster, displacedMesh) {
+function intersectDisplacedMesh(
+  raycaster: THREE.Raycaster,
+  displacedMesh: THREE.Mesh | null
+): { point: THREE.Vector3; distance: number; uv: THREE.Vector2 } | null {
   if (!displacedMesh || !displacedMesh.geometry) return null;
 
   const geometry = displacedMesh.geometry;
@@ -633,22 +713,27 @@ function intersectDisplacedMesh(raycaster, displacedMesh) {
 
   let closestIntersection = null;
 
+  // Narrow commonly used attributes to BufferAttribute for TS helper methods
+  const posAttr = positionAttribute as THREE.BufferAttribute;
+  const normAttr = normalAttribute as THREE.BufferAttribute;
+  const uvAttr = uvAttribute as THREE.BufferAttribute;
+
   for (let i = 0; i < index.count; i += 3) {
     const a = index.getX(i);
     const b = index.getX(i + 1);
     const c = index.getX(i + 2);
 
-    vA.fromBufferAttribute(positionAttribute, a);
-    vB.fromBufferAttribute(positionAttribute, b);
-    vC.fromBufferAttribute(positionAttribute, c);
+    vA.fromBufferAttribute(posAttr, a);
+    vB.fromBufferAttribute(posAttr, b);
+    vC.fromBufferAttribute(posAttr, c);
 
-    nA.fromBufferAttribute(normalAttribute, a);
-    nB.fromBufferAttribute(normalAttribute, b);
-    nC.fromBufferAttribute(normalAttribute, c);
+    nA.fromBufferAttribute(normAttr, a);
+    nB.fromBufferAttribute(normAttr, b);
+    nC.fromBufferAttribute(normAttr, c);
 
-    uvA.fromBufferAttribute(uvAttribute, a);
-    uvB.fromBufferAttribute(uvAttribute, b);
-    uvC.fromBufferAttribute(uvAttribute, c);
+    uvA.fromBufferAttribute(uvAttr, a);
+    uvB.fromBufferAttribute(uvAttr, b);
+    uvC.fromBufferAttribute(uvAttr, c);
 
     const hA = heightAttribute.getX(a);
     const hB = heightAttribute.getX(b);
@@ -704,7 +789,7 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function onPointerDown(event) {
+function onPointerDown(event: PointerEvent): void {
   if (event.button === 0 || event.button === 2) {
     isPointerDown = true;
     pointerButton = event.button;
@@ -720,12 +805,12 @@ function onPointerDown(event) {
   }
 }
 
-function onPointerUp() {
+function onPointerUp(): void {
   isPointerDown = false;
   pointerButton = -1;
 }
 
-function onPointerMove(event) {
+function onPointerMove(event: PointerEvent): void {
   pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
@@ -784,8 +869,16 @@ function animate() {
     }
   }
 
-  if (sunOrbit) {
-    sunOrbit.rotation.y += 0.002;
+  // --- Animate Sun on an elliptical orbit ---
+  if (sunMesh) {
+    const x = SUN_A * Math.cos(sunAngle);
+    const z = SUN_B * Math.sin(sunAngle);
+    const r = Math.sqrt(x * x + z * z);
+    const angularVelocity = SUN_K / (r * r);
+    sunAngle += angularVelocity * deltaTime;
+    sunMesh.position.set(x, 0, z);
+    // subtle self-rotation for visual interest
+    sunMesh.rotation.y += 0.0005;
   }
 
   if (cloudMesh) {
@@ -793,19 +886,14 @@ function animate() {
     cloudMesh.rotation.x += 0.0002;
   }
 
-  // --- Animate Moons with Realistic Physics ---
+  // --- Animate Moons with Realistic Physics (elliptical paths) ---
   if (moon1 && moonOrbit1) {
-    const A1 = 130; // Semi-major axis (farthest distance from center)
-    const B1 = 110; // Semi-minor axis (closest distance from center)
-    const K1 = 3600; // Orbital constant that determines overall speed
-
-    // Calculate current position to find distance from planet
-    const x1 = A1 * Math.cos(moon1Angle);
-    const z1 = B1 * Math.sin(moon1Angle);
+    const x1 = MOON1_A * Math.cos(moon1Angle);
+    const z1 = MOON1_B * Math.sin(moon1Angle);
     const r1 = Math.sqrt(x1 * x1 + z1 * z1);
 
-    // Angular velocity is inversely proportional to the square of the distance (Kepler's 2nd Law approximation)
-    const angularVelocity = K1 / (r1 * r1);
+    // Angular velocity is inversely proportional to the square of the distance (Kepler-like)
+    const angularVelocity = MOON1_K / (r1 * r1);
     moon1Angle += angularVelocity * deltaTime;
 
     // Set the moon's new position
@@ -815,15 +903,11 @@ function animate() {
   }
 
   if (moon2 && moonOrbit2) {
-    const A2 = 180;
-    const B2 = 145;
-    const K2 = 4000;
-
-    const x2 = A2 * Math.cos(moon2Angle);
-    const z2 = B2 * Math.sin(moon2Angle);
+    const x2 = MOON2_A * Math.cos(moon2Angle);
+    const z2 = MOON2_B * Math.sin(moon2Angle);
     const r2 = Math.sqrt(x2 * x2 + z2 * z2);
 
-    const angularVelocity = K2 / (r2 * r2);
+    const angularVelocity = MOON2_K / (r2 * r2);
     moon2Angle += angularVelocity * deltaTime;
 
     moon2.position.x = x2;
@@ -835,14 +919,10 @@ function animate() {
     planetMesh.material.uniforms.uTime.value = currentTime;
   }
 
-  if (sunOrbit) {
-    const sunMesh = sunOrbit.children[0];
-    if (
-      sunMesh &&
-      sunMesh.material.uniforms &&
-      sunMesh.material.uniforms.uTime
-    ) {
-      sunMesh.material.uniforms.uTime.value = currentTime;
+  if (sunMesh && sunMesh.material instanceof THREE.ShaderMaterial) {
+    const mat = sunMesh.material as THREE.ShaderMaterial;
+    if (mat.uniforms && mat.uniforms.uTime) {
+      mat.uniforms.uTime.value = currentTime;
     }
   }
 
