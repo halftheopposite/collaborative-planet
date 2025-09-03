@@ -49,6 +49,14 @@ export const SUN_A = 520;
 export const SUN_B = 400;
 export const SUN_K = 12000;
 
+// Birds system
+export const BIRD_COUNT = 50;
+export const BIRD_SCALE = 0.3;
+export const BIRD_HEIGHT_OFFSET = 2.5; // Height above planet surface (constant orbital height)
+export const BIRD_SPEED = 2.0; // Movement speed around planet
+export const BIRD_MIN_FLAP_SPEED = 10; // Minimum wing flapping speed (Hz)
+export const BIRD_MAX_FLAP_SPEED = 20; // Maximum wing flapping speed (Hz)
+
 // --- Planet material layers (normalized 0..1) ---
 // Define color layers from MIN_HEIGHT (0) to MAX_HEIGHT (1). Colors can be hex strings or numbers.
 export type Layer = { start: number; color: string | number };

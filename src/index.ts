@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import type { ScultAction } from "./actions";
+import { createBirdsSystem, type BirdsSystem } from "./birds";
 import { create as createCelestials, update as updateCelestials } from "./celestials";
 import {
   CAMERA_FAR,
@@ -33,6 +34,7 @@ let clock!: THREE.Clock;
 
 let planet: Planet | null = null;
 let actionLayer: ActionLayer | null = null;
+let birdsSystem: BirdsSystem | null = null;
 
 let isPointerDown: boolean = false;
 let pointerButton: number = -1;
@@ -95,7 +97,8 @@ function init() {
   createCelestials(scene);
   actionLayer = createActionLayer(planet);
 
-  // Load persisted heights if available
+  // Initialize birds system
+  birdsSystem = createBirdsSystem(scene, planet); // Load persisted heights if available
   const saved = loadHeightsFromLocalStorage();
   if (
     saved &&
@@ -275,6 +278,10 @@ function animate() {
   updateCelestials(currentTime, deltaTime);
   planet?.update(currentTime);
 
+  // Update birds system
+  if (birdsSystem) {
+    birdsSystem.update(currentTime, deltaTime);
+  }
   renderer.render(scene, camera);
 }
 
