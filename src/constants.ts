@@ -2,10 +2,10 @@
 
 export const PLANET_RADIUS = 60;
 export const PLANET_SEGMENTS = 64; // segments per cube face for quad sphere
-export const MAX_HEIGHT = 5;
 export const MIN_HEIGHT = -3.75;
+export const MAX_HEIGHT = 3;
 export const SCULPT_RADIUS = 3;
-export const SCULPT_STRENGTH = 0.75;
+export const SCULPT_STRENGTH = 0.25;
 
 // Camera
 export const CAMERA_FOV = 60;
@@ -28,7 +28,7 @@ export const SCULPT_RATE_HZ = 30;
 
 // Environment layers
 // Water level is a height relative to PLANET_RADIUS (negative is below base radius)
-export const WATER_LEVEL = -2.6;
+export const WATER_LEVEL = -3;
 // Cloud shell offset above base radius
 export const CLOUD_LAYER_OFFSET = 2.5;
 
@@ -44,3 +44,20 @@ export const MOON2_K = 4000;
 export const SUN_A = 520;
 export const SUN_B = 400;
 export const SUN_K = 12000;
+
+// --- Planet material layers (normalized 0..1) ---
+// Define color layers from MIN_HEIGHT (0) to MAX_HEIGHT (1). Colors can be hex strings or numbers.
+export type Layer = { start: number; color: string | number };
+
+// Defaults approximate the current procedural palette using thresholds mapped to normalized space.
+// You can edit freely; add/remove entries as needed. Ensure the last entry reaches 1.0 for a terminal color.
+export const PLANET_LAYERS: Layer[] = [
+  { start: 0.0, color: "#E63300" }, // lava
+  { start: 0.05, color: "#4D4D59" }, // bedrock
+  { start: 0.1, color: "#D9C79E" }, // sand
+  { start: 0.4, color: "#c78b50" }, // dirt
+  { start: 0.5, color: "#2d8844" }, // green
+  { start: 0.7, color: "#1c582b" }, // dark green
+  { start: 0.8, color: "#626262" }, // snow transition
+  { start: 1.0, color: "#FFFFFF" }, // top snow
+];

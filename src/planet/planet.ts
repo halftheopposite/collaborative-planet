@@ -2,11 +2,13 @@ import * as THREE from "three";
 import {
   MAX_HEIGHT,
   MIN_HEIGHT,
+  PLANET_LAYERS,
   PLANET_RADIUS,
   PLANET_SEGMENTS,
   SCULPT_RADIUS,
   SCULPT_STRENGTH,
   WATER_LEVEL,
+  type Layer,
 } from "../constants";
 import planetFragmentShader from "../shaders/planet.frag.glsl";
 import planetVertexShader from "../shaders/planet.vert.glsl";
@@ -19,6 +21,18 @@ export type Planet = {
   setCursor: (hit: DisplacedIntersection | null) => void;
   intersect: (raycaster: THREE.Raycaster) => DisplacedIntersection | null;
   sculptAt: (point: THREE.Vector3, direction: 1 | -1) => void;
+  // Custom normalized layers [0..1]
+  setLayers: (layers: Array<{ start: number; color: THREE.Color | number | string }>) => void;
+  clearLayers: () => void;
+  setLavaOverlay: (
+    opts: Partial<{
+      base: THREE.Color | number | string;
+      hot: THREE.Color | number | string;
+      maxT: number;
+      enabled: boolean;
+    }>
+  ) => void;
+  setExposure: (exposure: number) => void;
 };
 
 function fixUvSeams(geometry: THREE.BufferGeometry): void {
@@ -155,6 +169,26 @@ export function createPlanet(): Planet {
       uCursorPos: { value: new THREE.Vector2(0, 0) },
       uCursorPos3D: { value: new THREE.Vector3() },
       uCursorActive: { value: 0.0 },
+      uBaseLavaColor: { value: new THREE.Color().setRGB(0.9, 0.2, 0.0) },
+      uHotLavaColor: { value: new THREE.Color().setRGB(1.0, 0.8, 0.3) },
+
+      // Normalization bounds
+      uMinHeight: { value: MIN_HEIGHT },
+      uMaxHeight: { value: MAX_HEIGHT },
+
+      // Custom layers (disabled by default)
+      uUseCustomLayers: { value: 0.0 },
+      uLayerCount: { value: 0 },
+      uLayerStarts: { value: new Float32Array(32).fill(0) },
+      uLayerColors: {
+        value: Array.from({ length: 32 }, () => new THREE.Vector3(1, 1, 1)),
+      },
+
+      // Lava overlay
+      uUseLavaNoise: { value: 1.0 },
+      uLavaMaxT: { value: 0.08 },
+      // Color grading
+      uExposure: { value: 1.15 },
     },
     vertexShader: planetVertexShader,
     fragmentShader: planetFragmentShader,
@@ -227,6 +261,65 @@ export function createPlanet(): Planet {
     }
     if (needsUpdate) heightAttribute.needsUpdate = true;
   }
+  function toColor3(c: THREE.Color | number | string): THREE.Color {
+    return c instanceof THREE.Color ? c : new THREE.Color(c as any);
+  }
 
-  return { mesh, update, setCursor, intersect, sculptAt };
+  function setLayers(layers: Parameters<Planet["setLayers"]>[0]) {
+    const sorted = [...layers]
+      .map((l) => ({ start: Math.min(1, Math.max(0, l.start)), color: toColor3(l.color) }))
+      .sort((a, b) => a.start - b.start);
+    const max = 32;
+    const count = Math.min(sorted.length, max);
+    const starts = new Float32Array(max).fill(0);
+    const colors = Array.from({ length: max }, () => new THREE.Vector3());
+    for (let i = 0; i < count; i++) {
+      starts[i] = sorted[i].start;
+      const c = sorted[i].color.clone().convertSRGBToLinear();
+      colors[i].set(c.r, c.g, c.b);
+    }
+    material.uniforms.uLayerStarts.value = starts;
+    material.uniforms.uLayerColors.value = colors;
+    material.uniforms.uLayerCount.value = count;
+    material.uniforms.uUseCustomLayers.value = count > 0 ? 1.0 : 0.0;
+  }
+
+  function clearLayers() {
+    material.uniforms.uLayerCount.value = 0;
+    material.uniforms.uUseCustomLayers.value = 0.0; // kept for backward compatibility in shader logic
+  }
+
+  function setLavaOverlay(opts: Parameters<Planet["setLavaOverlay"]>[0]) {
+    const u = material.uniforms;
+    if (opts.base !== undefined)
+      u.uBaseLavaColor.value = toColor3(opts.base).clone().convertSRGBToLinear();
+    if (opts.hot !== undefined)
+      u.uHotLavaColor.value = toColor3(opts.hot).clone().convertSRGBToLinear();
+    if (opts.maxT !== undefined) u.uLavaMaxT.value = THREE.MathUtils.clamp(opts.maxT, 0, 1);
+    if (opts.enabled !== undefined) u.uUseLavaNoise.value = opts.enabled ? 1.0 : 0.0;
+  }
+
+  function setExposure(exposure: number) {
+    material.uniforms.uExposure.value = Math.max(0, exposure);
+  }
+
+  // Apply PLANET_LAYERS from constants if provided
+  if (Array.isArray(PLANET_LAYERS) && PLANET_LAYERS.length > 0) {
+    const mapped: { start: number; color: THREE.Color | number | string }[] = PLANET_LAYERS.map(
+      (l: Layer) => ({ start: l.start, color: l.color })
+    );
+    setLayers(mapped);
+  }
+
+  return {
+    mesh,
+    update,
+    setCursor,
+    intersect,
+    sculptAt,
+    setLayers,
+    clearLayers,
+    setLavaOverlay,
+    setExposure,
+  };
 }
