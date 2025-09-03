@@ -17,6 +17,12 @@ import {
 } from "./constants";
 import { createActionLayer, type ActionLayer } from "./net/actionLayer";
 import { createPlanet, type Planet } from "./planet/planet";
+import {
+  loadCameraFromLocalStorage,
+  loadHeightsFromLocalStorage,
+  saveCameraToLocalStorage,
+  saveHeightsToLocalStorage,
+} from "./utils/persistence";
 
 // Core Scene
 let scene!: THREE.Scene;
@@ -88,6 +94,64 @@ function init() {
   scene.add(planet.mesh);
   createCelestials(scene);
   actionLayer = createActionLayer(planet);
+
+  // Load persisted heights if available
+  const saved = loadHeightsFromLocalStorage();
+  if (
+    saved &&
+    saved.length === (planet.mesh.geometry.attributes.aHeight as THREE.BufferAttribute).count
+  ) {
+    planet.setHeights(saved);
+  }
+
+  // Auto-save heights with a small debounce after any sculpting change
+  let saveTimer: number | null = null;
+  const scheduleSave = () => {
+    if (saveTimer !== null) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      if (!planet) return;
+      const heights = planet.getHeights();
+      saveHeightsToLocalStorage(heights);
+      saveTimer = null;
+    }, 250);
+  };
+  planet.onHeightsChanged(scheduleSave);
+  // Also flush on unload
+  window.addEventListener("beforeunload", () => {
+    if (planet) saveHeightsToLocalStorage(planet.getHeights());
+  });
+
+  // Load camera state if any
+  const camState = loadCameraFromLocalStorage();
+  if (camState) {
+    camera.position.set(camState.position.x, camState.position.y, camState.position.z);
+    controls.target.set(camState.target.x, camState.target.y, camState.target.z);
+    camera.updateProjectionMatrix();
+    controls.update();
+    updateControlSpeeds();
+  }
+
+  // Debounced camera autosave on controls changes
+  let camSaveTimer: number | null = null;
+  const scheduleCamSave = () => {
+    if (camSaveTimer !== null) window.clearTimeout(camSaveTimer);
+    camSaveTimer = window.setTimeout(() => {
+      saveCameraToLocalStorage({
+        version: 1,
+        position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        target: { x: controls.target.x, y: controls.target.y, z: controls.target.z },
+      });
+      camSaveTimer = null;
+    }, 200);
+  };
+  controls.addEventListener("change", scheduleCamSave);
+  window.addEventListener("beforeunload", () => {
+    saveCameraToLocalStorage({
+      version: 1,
+      position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+      target: { x: controls.target.x, y: controls.target.y, z: controls.target.z },
+    });
+  });
 
   window.addEventListener("resize", onWindowResize);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);

@@ -26,6 +26,10 @@ export type Planet = {
   setLayers: (layers: Array<{ start: number; color: THREE.Color | number | string }>) => void;
   clearLayers: () => void;
   setExposure: (exposure: number) => void;
+  // Persistence helpers
+  getHeights: () => Float32Array; // returns a copy of the heights array
+  setHeights: (heights: Float32Array | number[]) => void;
+  onHeightsChanged: (cb: () => void) => () => void; // subscribe; returns unsubscribe
 };
 
 function fixUvSeams(geometry: THREE.BufferGeometry): void {
@@ -251,7 +255,10 @@ export function createPlanet(): Planet {
         }
       }
     }
-    if (needsUpdate) heightAttribute.needsUpdate = true;
+    if (needsUpdate) {
+      heightAttribute.needsUpdate = true;
+      notifyHeightsChanged();
+    }
   }
   function toColor3(c: THREE.Color | number | string): THREE.Color {
     return c instanceof THREE.Color ? c : new THREE.Color(c as any);
@@ -285,6 +292,37 @@ export function createPlanet(): Planet {
     material.uniforms.uExposure.value = Math.max(0, exposure);
   }
 
+  // --- Persistence helpers ---
+  const heightChangeListeners: Array<() => void> = [];
+  function onHeightsChanged(cb: () => void): () => void {
+    heightChangeListeners.push(cb);
+    return () => {
+      const i = heightChangeListeners.indexOf(cb);
+      if (i >= 0) heightChangeListeners.splice(i, 1);
+    };
+  }
+
+  function notifyHeightsChanged() {
+    for (const cb of heightChangeListeners) cb();
+  }
+
+  function getHeights(): Float32Array {
+    const attr = mesh.geometry.attributes.aHeight as THREE.BufferAttribute;
+    // Return a copy to avoid external mutation of our internal buffer
+    return new Float32Array(attr.array as Float32Array);
+  }
+
+  function setHeights(heights: Float32Array | number[]): void {
+    const attr = mesh.geometry.attributes.aHeight as THREE.BufferAttribute;
+    const target = attr.array as Float32Array;
+    if (heights.length !== target.length) return; // ignore mismatched data
+    // Copy into attribute
+    if (heights instanceof Float32Array) target.set(heights);
+    else target.set(heights as number[]);
+    attr.needsUpdate = true;
+    notifyHeightsChanged();
+  }
+
   // Apply PLANET_LAYERS from constants if provided
   if (Array.isArray(PLANET_LAYERS) && PLANET_LAYERS.length > 0) {
     const mapped: { start: number; color: THREE.Color | number | string }[] = PLANET_LAYERS.map(
@@ -302,5 +340,8 @@ export function createPlanet(): Planet {
     setLayers,
     clearLayers,
     setExposure,
+    getHeights,
+    setHeights,
+    onHeightsChanged,
   };
 }
