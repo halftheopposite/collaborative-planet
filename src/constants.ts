@@ -32,6 +32,10 @@ export const WATER_LEVEL = -3;
 // Cloud shell offset above base radius
 export const CLOUD_LAYER_OFFSET = 2.5;
 
+// Shoreline foam
+// Width of the foam band around the waterline (in height units, same as MIN/MAX_HEIGHT)
+export const FOAM_WIDTH = 0.35;
+
 // Orbit parameters
 export const MOON1_A = 130;
 export const MOON1_B = 110;
@@ -52,8 +56,7 @@ export type Layer = { start: number; color: string | number };
 // Defaults approximate the current procedural palette using thresholds mapped to normalized space.
 // You can edit freely; add/remove entries as needed. Ensure the last entry reaches 1.0 for a terminal color.
 export const PLANET_LAYERS: Layer[] = [
-  { start: 0.0, color: "#E63300" }, // lava
-  { start: 0.05, color: "#4D4D59" }, // bedrock
+  { start: 0.0, color: "#4D4D59" }, // bedrock
   { start: 0.1, color: "#D9C79E" }, // sand
   { start: 0.4, color: "#c78b50" }, // dirt
   { start: 0.5, color: "#2d8844" }, // green

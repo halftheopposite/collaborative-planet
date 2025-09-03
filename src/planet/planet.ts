@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+  FOAM_WIDTH,
   MAX_HEIGHT,
   MIN_HEIGHT,
   PLANET_LAYERS,
@@ -24,14 +25,6 @@ export type Planet = {
   // Custom normalized layers [0..1]
   setLayers: (layers: Array<{ start: number; color: THREE.Color | number | string }>) => void;
   clearLayers: () => void;
-  setLavaOverlay: (
-    opts: Partial<{
-      base: THREE.Color | number | string;
-      hot: THREE.Color | number | string;
-      maxT: number;
-      enabled: boolean;
-    }>
-  ) => void;
   setExposure: (exposure: number) => void;
 };
 
@@ -169,8 +162,6 @@ export function createPlanet(): Planet {
       uCursorPos: { value: new THREE.Vector2(0, 0) },
       uCursorPos3D: { value: new THREE.Vector3() },
       uCursorActive: { value: 0.0 },
-      uBaseLavaColor: { value: new THREE.Color().setRGB(0.9, 0.2, 0.0) },
-      uHotLavaColor: { value: new THREE.Color().setRGB(1.0, 0.8, 0.3) },
 
       // Normalization bounds
       uMinHeight: { value: MIN_HEIGHT },
@@ -184,9 +175,10 @@ export function createPlanet(): Planet {
         value: Array.from({ length: 32 }, () => new THREE.Vector3(1, 1, 1)),
       },
 
-      // Lava overlay
-      uUseLavaNoise: { value: 1.0 },
-      uLavaMaxT: { value: 0.08 },
+      // (lava overlay removed)
+      // Water/foam
+      uWaterLevel: { value: WATER_LEVEL },
+      uFoamWidth: { value: FOAM_WIDTH },
       // Color grading
       uExposure: { value: 1.15 },
     },
@@ -205,9 +197,9 @@ export function createPlanet(): Planet {
   );
   const waterMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color(0x0a3d66), // deep blue
-    transparent: false,
-    opacity: 1.0,
-    depthWrite: true,
+    transparent: true,
+    opacity: 0.72, // slight transparency so shore foam is visible underwater
+    depthWrite: false, // don't write depth so underlying shore remains visible
   });
   const waterMesh = new THREE.Mesh(waterGeom, waterMat);
   waterMesh.renderOrder = 0.5; // render before atmosphere/clouds but after planet by default depth
@@ -289,16 +281,6 @@ export function createPlanet(): Planet {
     material.uniforms.uUseCustomLayers.value = 0.0; // kept for backward compatibility in shader logic
   }
 
-  function setLavaOverlay(opts: Parameters<Planet["setLavaOverlay"]>[0]) {
-    const u = material.uniforms;
-    if (opts.base !== undefined)
-      u.uBaseLavaColor.value = toColor3(opts.base).clone().convertSRGBToLinear();
-    if (opts.hot !== undefined)
-      u.uHotLavaColor.value = toColor3(opts.hot).clone().convertSRGBToLinear();
-    if (opts.maxT !== undefined) u.uLavaMaxT.value = THREE.MathUtils.clamp(opts.maxT, 0, 1);
-    if (opts.enabled !== undefined) u.uUseLavaNoise.value = opts.enabled ? 1.0 : 0.0;
-  }
-
   function setExposure(exposure: number) {
     material.uniforms.uExposure.value = Math.max(0, exposure);
   }
@@ -319,7 +301,6 @@ export function createPlanet(): Planet {
     sculptAt,
     setLayers,
     clearLayers,
-    setLavaOverlay,
     setExposure,
   };
 }

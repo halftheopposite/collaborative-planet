@@ -6,8 +6,10 @@ uniform float uTime;
 uniform vec2 uCursorPos;
 uniform vec3 uCursorPos3D; // Receive 3D cursor position
 uniform float uCursorActive;
-uniform vec3 uBaseLavaColor;
-uniform vec3 uHotLavaColor;
+// (lava uniforms removed)
+// Water/foam
+uniform float uWaterLevel;   // in height units relative to base radius
+uniform float uFoamWidth;    // width of foam band in height units
 
 // Normalization bounds for vHeight
 uniform float uMinHeight;
@@ -21,10 +23,7 @@ uniform float uLayerStarts[MAX_LAYERS]; // normalized [0,1]
 uniform vec3  uLayerColors[MAX_LAYERS];
 // Color grading
 uniform float uExposure; // simple brightness multiplier in linear space
-// Optional lava overlay control (normalized space)
-uniform float uUseLavaNoise; // 0.0 or 1.0
-uniform float uLavaMaxT;     // apply lava overlay for t in [0, uLavaMaxT]
-// --- Noise functions copied from Sun Shader for Lava Effect ---
+// --- Noise utilities ---
 vec3 random3(vec3 st) {
     st = vec3(dot(st, vec3(127.1, 311.7, 74.7)),
               dot(st, vec3(269.5, 183.3, 246.1)),
@@ -55,17 +54,6 @@ float fbm3(vec3 st) {
     return value;
 }
 void main() {
-    // Animated lava core (Core)
-    vec3 noisyPos = normalize(vPosition) * 2.5;
-    noisyPos.xy += uTime * 0.15;
-    float noise = fbm3(noisyPos);
-    noise = clamp(noise, 0.0, 1.0);
-    float pulse = 0.5 + 0.5 * sin(uTime * 1.5);
-    vec3 baseLavaColor = uBaseLavaColor;
-    vec3 hotLavaColor  = uHotLavaColor;
-    vec3 turbulentLava = mix(baseLavaColor, hotLavaColor, pow(noise, 2.0));
-    vec3 lavaColor     = turbulentLava * (1.0 + pulse * 0.7);
-    
     // Dynamic gradient layering only
     // Normalize height to 0..1 based on provided min/max
     float t = (vHeight - uMinHeight) / (uMaxHeight - uMinHeight);
@@ -90,10 +78,29 @@ void main() {
     }
     vec3 finalColor = c;
 
-    // Optional lava overlay near the core (lowest normalized heights)
-    if (uUseLavaNoise > 0.5 && uLayerCount > 0) {
-        float lavaMask = 1.0 - smoothstep(0.0, max(1e-5, uLavaMaxT), t);
-        finalColor = mix(finalColor, lavaColor, clamp(lavaMask, 0.0, 1.0));
+    // (lava overlay removed)
+    // Shoreline foam: highlight where terrain height crosses water level.
+    // Use vHeight (height offset from base radius) and render a foam band centered at uWaterLevel.
+    {
+        float foamCenter = uWaterLevel;           // height where water surface sits
+        float halfW = max(1e-4, 0.5 * uFoamWidth);
+        // Distance of current fragment height to the water plane in height-units
+        float hdist = abs(vHeight - foamCenter);
+        // Soft band falloff using smoothstep; 1 at center, 0 beyond width
+        float foamMask = 1.0 - smoothstep(0.0, halfW, hdist);
+        // Add some breakup so foam isn't a perfect ring
+        vec3 foamNoisePos = normalize(vPosition) * 10.0 + vec3(0.0, uTime * 0.1, 0.0);
+        float foamNoise = fbm3(foamNoisePos);
+        // Edge choppiness
+        float edge = smoothstep(0.2, 1.0, foamNoise);
+        foamMask *= mix(0.7, 1.0, edge);
+        // Stronger foam on water side (below water level)
+        float below = step(vHeight, foamCenter);
+        foamMask *= mix(0.7, 1.0, below);
+        // Foam color slightly tinted towards white/blue
+        vec3 foamColor = vec3(0.95, 0.97, 1.0);
+        // Mix additively for sparkle, then clamp
+        finalColor = mix(finalColor, foamColor, clamp(foamMask, 0.0, 1.0));
     }
     float equatorThickness = 0.005;
     vec3 equatorColor = vec3(1.0, 1.0, 1.0); 
