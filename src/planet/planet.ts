@@ -160,6 +160,24 @@ export function createPlanet(): Planet {
   });
   const mesh = new THREE.Mesh(geometry, material);
 
+  // Water layer: a transparent deep-blue sphere slightly above a typical "sea level"
+  // Sea level chosen between bedrock and sand thresholds used in the shader (-2.6 approx)
+  const SEA_LEVEL = PLANET_RADIUS + -2.6; // base radius + height
+  const waterGeom = new THREE.SphereGeometry(
+    Math.max(SEA_LEVEL, PLANET_RADIUS + MIN_HEIGHT + 0.01),
+    128,
+    128
+  );
+  const waterMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(0x0a3d66), // deep blue
+    transparent: false,
+    opacity: 1.0,
+    depthWrite: true,
+  });
+  const waterMesh = new THREE.Mesh(waterGeom, waterMat);
+  waterMesh.renderOrder = 0.5; // render before atmosphere/clouds but after planet by default depth
+  mesh.add(waterMesh);
+
   function update(time: number) {
     material.uniforms.uTime.value = time;
   }

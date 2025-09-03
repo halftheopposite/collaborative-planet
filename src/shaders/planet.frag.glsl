@@ -37,25 +37,58 @@ float fbm3(vec3 st) {
     return value;
 }
 void main() {
-    vec3 snowColor = vec3(1.0, 1.0, 1.0);
-    vec3 rockColor = vec3(0.5, 0.5, 0.5);
-    vec3 grassColor = vec3(0.2, 0.6, 0.25);
-    vec3 dirtColor = vec3(0.45, 0.3, 0.15);
-    vec3 burntOrangeColor = vec3(0.8, 0.4, 0.1);
+    // Material palette
+    vec3 snowColor       = vec3(1.0, 1.0, 1.0);
+    vec3 greenDarkColor  = vec3(0.12, 0.35, 0.18);     // dark green mountain
+    vec3 dirtColor       = vec3(0.45, 0.30, 0.15);
+    vec3 sandColor       = vec3(0.85, 0.78, 0.62);
+    vec3 bedrockColor    = vec3(0.30, 0.30, 0.35);
+
+    // Animated lava core (Core)
     vec3 noisyPos = normalize(vPosition) * 2.5;
     noisyPos.xy += uTime * 0.15;
     float noise = fbm3(noisyPos);
     float pulse = 0.5 + 0.5 * sin(uTime * 1.5);
-    vec3 baseLavaColor = vec3(0.9, 0.2, 0.0);
-    vec3 hotLavaColor = vec3(1.0, 0.8, 0.3);
+    vec3 baseLavaColor = vec3(0.90, 0.20, 0.00);
+    vec3 hotLavaColor  = vec3(1.00, 0.80, 0.30);
     vec3 turbulentLava = mix(baseLavaColor, hotLavaColor, pow(noise, 2.0));
-    vec3 lavaColor = turbulentLava * (1.0 + pulse * 0.7);
-    vec3 finalColor = lavaColor;
-    finalColor = mix(finalColor, burntOrangeColor, smoothstep(-3.75, -3.0, vHeight));
-    finalColor = mix(finalColor, dirtColor,        smoothstep(-3.0, -2.0, vHeight));
-    finalColor = mix(finalColor, grassColor,       smoothstep(-2.0, 0.0, vHeight));
-    finalColor = mix(finalColor, rockColor,        smoothstep(0.0, 2.0, vHeight));
-    finalColor = mix(finalColor, snowColor,        smoothstep(2.0, 3.75, vHeight));
+    vec3 lavaColor     = turbulentLava * (1.0 + pulse * 0.7);
+
+    // Height thresholds (do not change MIN/MAX globally; use local ranges)
+    // Range is approximately MIN_HEIGHT=-3.75 to MAX_HEIGHT=5.0
+    const float H_CORE_TOP        = -3.20; // Core (lava) -> Bedrock
+    const float H_BEDROCK_TOP     = -2.80; // Bedrock -> (water sits between) -> Sand
+    const float H_WATER_LEVEL     = -2.60; // Water layer radius (separate mesh), for shoreline cues
+    const float H_SAND_TOP        = -1.80; // Sand -> Dirt
+    const float H_DIRT_TOP        = -0.40; // Dirt -> Dark green mountain
+    const float H_GREEN_TOP       =  2.00; // Dark green -> Dark green with snow
+    const float H_GREEN_SNOW_TOP  =  3.20; // Dark green with snow -> Snowy mountain
+    const float H_SNOW_TOP        =  5.00; // up to MAX
+
+    // Progressive smooth layering from bottom to top
+    vec3 finalColor = lavaColor;                                 // Core (lava)
+    finalColor = mix(finalColor, bedrockColor,    smoothstep(H_CORE_TOP,       H_BEDROCK_TOP,    vHeight)); // Bedrock
+
+    // Sand: starts above the water level; extra boost right near shorelines
+    float sandBlend = smoothstep(H_WATER_LEVEL + 0.02, H_SAND_TOP, vHeight);
+    // Encourage sand right around sea level (shore factor)
+    float shore = 1.0 - abs(vHeight - H_WATER_LEVEL) / 0.50; // +/- 0.5 band around water
+    shore = clamp(shore, 0.0, 1.0);
+    sandBlend = clamp(max(sandBlend, shore * 0.8), 0.0, 1.0);
+    finalColor = mix(finalColor, sandColor, sandBlend);        // Sand
+
+    // Dirt
+    finalColor = mix(finalColor, dirtColor,       smoothstep(H_SAND_TOP,       H_DIRT_TOP,       vHeight));
+
+    // Dark green mountain
+    finalColor = mix(finalColor, greenDarkColor,  smoothstep(H_DIRT_TOP,       H_GREEN_TOP,      vHeight));
+
+    // Dark green mountain with snow (blend into snow)
+    vec3 greenSnow = mix(greenDarkColor, snowColor, smoothstep(H_GREEN_TOP, H_GREEN_SNOW_TOP, vHeight));
+    finalColor = mix(finalColor, greenSnow,        smoothstep(H_GREEN_TOP,     H_GREEN_SNOW_TOP, vHeight));
+
+    // Snowy mountain (pure snow towards the very top)
+    finalColor = mix(finalColor, snowColor,       smoothstep(H_GREEN_SNOW_TOP, H_SNOW_TOP,       vHeight));
     float equatorThickness = 0.005;
     vec3 equatorColor = vec3(1.0, 1.0, 1.0); 
     if (abs(vNormal.y) < equatorThickness) {
