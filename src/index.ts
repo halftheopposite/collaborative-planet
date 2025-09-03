@@ -2,6 +2,19 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import type { ScultAction } from "./actions";
 import { create as createCelestials, update as updateCelestials } from "./celestials";
+import {
+  CAMERA_FAR,
+  CAMERA_FOV,
+  CAMERA_NEAR,
+  CAMERA_START_Z,
+  CONTROLS_MAX_DISTANCE,
+  CONTROLS_MIN_DISTANCE,
+  ORBIT_PAN_SPEED_FAR,
+  ORBIT_PAN_SPEED_NEAR,
+  ORBIT_ROTATE_SPEED_FAR,
+  ORBIT_ROTATE_SPEED_NEAR,
+  SCULPT_RATE_HZ,
+} from "./constants";
 import { createActionLayer, type ActionLayer } from "./net/actionLayer";
 import { createPlanet, type Planet } from "./planet/planet";
 
@@ -23,11 +36,6 @@ let lastSculptTime: number = 0;
 let coordsDisplay: HTMLElement | null = null;
 let isSculpting: boolean = false;
 let sculptDirection: 1 | -1 = 1; // 1 = raise, -1 = lower
-// Distance-scaled control speeds
-const ROTATE_SPEED_NEAR = 0.1;
-const ROTATE_SPEED_FAR = 1.6;
-const PAN_SPEED_NEAR = 0.4;
-const PAN_SPEED_FAR = 1.6;
 
 function updateControlSpeeds() {
   if (!controls || !camera) return;
@@ -35,8 +43,8 @@ function updateControlSpeeds() {
   const min = controls.minDistance || 0.0001;
   const max = controls.maxDistance || min + 1;
   const t = THREE.MathUtils.clamp((dist - min) / Math.max(1e-6, max - min), 0, 1);
-  controls.rotateSpeed = THREE.MathUtils.lerp(ROTATE_SPEED_NEAR, ROTATE_SPEED_FAR, t);
-  controls.panSpeed = THREE.MathUtils.lerp(PAN_SPEED_NEAR, PAN_SPEED_FAR, t);
+  controls.rotateSpeed = THREE.MathUtils.lerp(ORBIT_ROTATE_SPEED_NEAR, ORBIT_ROTATE_SPEED_FAR, t);
+  controls.panSpeed = THREE.MathUtils.lerp(ORBIT_PAN_SPEED_NEAR, ORBIT_PAN_SPEED_FAR, t);
 }
 
 // Timekeeping
@@ -49,8 +57,13 @@ function init() {
   scene = new THREE.Scene();
   clock = new THREE.Clock();
   coordsDisplay = document.getElementById("coords-display");
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 0, 150);
+  camera = new THREE.PerspectiveCamera(
+    CAMERA_FOV,
+    window.innerWidth / window.innerHeight,
+    CAMERA_NEAR,
+    CAMERA_FAR
+  );
+  camera.position.set(0, 0, CAMERA_START_Z);
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -58,8 +71,8 @@ function init() {
   // Default cursor indicates draggable canvas
   renderer.domElement.style.cursor = "grab";
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.minDistance = 80;
-  controls.maxDistance = 300;
+  controls.minDistance = CONTROLS_MIN_DISTANCE;
+  controls.maxDistance = CONTROLS_MAX_DISTANCE;
   controls.enablePan = true;
   // Standard controls: left-drag orbit, wheel/middle to dolly, right to pan
   controls.mouseButtons = {
@@ -179,7 +192,7 @@ function animate() {
   }
 
   if (isPointerDown && isSculpting) {
-    const sculptInterval = 1 / 30;
+    const sculptInterval = 1 / SCULPT_RATE_HZ;
     if (currentTime - lastSculptTime > sculptInterval) {
       if (intersect && planet && actionLayer) {
         const action: ScultAction = {

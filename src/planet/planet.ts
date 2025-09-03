@@ -6,6 +6,7 @@ import {
   PLANET_SEGMENTS,
   SCULPT_RADIUS,
   SCULPT_STRENGTH,
+  WATER_LEVEL,
 } from "../constants";
 import planetFragmentShader from "../shaders/planet.frag.glsl";
 import planetVertexShader from "../shaders/planet.vert.glsl";
@@ -161,8 +162,8 @@ export function createPlanet(): Planet {
   const mesh = new THREE.Mesh(geometry, material);
 
   // Water layer: a transparent deep-blue sphere slightly above a typical "sea level"
-  // Sea level chosen between bedrock and sand thresholds used in the shader (-2.6 approx)
-  const SEA_LEVEL = PLANET_RADIUS + -2.6; // base radius + height
+  // Sea level defined in constants as height relative to base radius
+  const SEA_LEVEL = PLANET_RADIUS + WATER_LEVEL; // base radius + height
   const waterGeom = new THREE.SphereGeometry(
     Math.max(SEA_LEVEL, PLANET_RADIUS + MIN_HEIGHT + 0.01),
     128,

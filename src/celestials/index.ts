@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+  CLOUD_LAYER_OFFSET,
   MOON1_A,
   MOON1_B,
   MOON1_K,
@@ -127,7 +128,7 @@ function createAtmosphere(scene: THREE.Scene) {
 }
 
 function createClouds(scene: THREE.Scene) {
-  const cloudGeometry = new THREE.SphereGeometry(PLANET_RADIUS + 1.5, 128, 128);
+  const cloudGeometry = new THREE.SphereGeometry(PLANET_RADIUS + CLOUD_LAYER_OFFSET, 128, 128);
   const textureLoader = new THREE.TextureLoader();
   const cloudTexture = textureLoader.load(
     "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png"
