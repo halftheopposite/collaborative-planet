@@ -23,6 +23,21 @@ let lastSculptTime: number = 0;
 let coordsDisplay: HTMLElement | null = null;
 let isSculpting: boolean = false;
 let sculptDirection: 1 | -1 = 1; // 1 = raise, -1 = lower
+// Distance-scaled control speeds
+const ROTATE_SPEED_NEAR = 0.1;
+const ROTATE_SPEED_FAR = 1.6;
+const PAN_SPEED_NEAR = 0.4;
+const PAN_SPEED_FAR = 1.6;
+
+function updateControlSpeeds() {
+  if (!controls || !camera) return;
+  const dist = camera.position.distanceTo(controls.target);
+  const min = controls.minDistance || 0.0001;
+  const max = controls.maxDistance || min + 1;
+  const t = THREE.MathUtils.clamp((dist - min) / Math.max(1e-6, max - min), 0, 1);
+  controls.rotateSpeed = THREE.MathUtils.lerp(ROTATE_SPEED_NEAR, ROTATE_SPEED_FAR, t);
+  controls.panSpeed = THREE.MathUtils.lerp(PAN_SPEED_NEAR, PAN_SPEED_FAR, t);
+}
 
 // Timekeeping
 let lastTime = 0;
@@ -53,6 +68,7 @@ function init() {
     RIGHT: THREE.MOUSE.PAN,
   };
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  updateControlSpeeds();
   scene.add(new THREE.AmbientLight(0xffffff, 0.1));
   planet = createPlanet();
   scene.add(planet.mesh);
@@ -133,6 +149,7 @@ function onPointerMove(event: PointerEvent): void {
 
 function animate() {
   requestAnimationFrame(animate);
+  updateControlSpeeds();
   controls.update();
 
   const currentTime = clock.getElapsedTime();
