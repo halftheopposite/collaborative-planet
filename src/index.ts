@@ -21,6 +21,8 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let lastSculptTime: number = 0;
 let coordsDisplay: HTMLElement | null = null;
+let isSculpting: boolean = false;
+let sculptDirection: 1 | -1 = 1; // 1 = raise, -1 = lower
 
 // Timekeeping
 let lastTime = 0;
@@ -38,15 +40,19 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   document.body.appendChild(renderer.domElement);
+  // Default cursor indicates draggable canvas
+  renderer.domElement.style.cursor = "grab";
   controls = new OrbitControls(camera, renderer.domElement);
   controls.minDistance = 80;
   controls.maxDistance = 300;
-  controls.enablePan = false;
+  controls.enablePan = true;
+  // Standard controls: left-drag orbit, wheel/middle to dolly, right to pan
   controls.mouseButtons = {
-    LEFT: THREE.MOUSE.PAN,
-    MIDDLE: THREE.MOUSE.ROTATE,
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN,
   };
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
   scene.add(new THREE.AmbientLight(0xffffff, 0.1));
   planet = createPlanet();
   scene.add(planet.mesh);
@@ -59,6 +65,8 @@ function init() {
   renderer.domElement.addEventListener("pointermove", onPointerMove);
   renderer.domElement.addEventListener("pointerout", () => {
     planet?.setCursor(null);
+    // Reset cursor when leaving canvas
+    if (!isPointerDown) renderer.domElement.style.cursor = "grab";
   });
   renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
 }
@@ -72,9 +80,17 @@ function onWindowResize() {
 }
 
 function onPointerDown(event: PointerEvent): void {
-  if (event.button === 0 || event.button === 2) {
+  // Sculpt only when holding a modifier with LEFT button:
+  // - Ctrl + Left: raise (up)
+  // - Alt/Option + Left: lower (down)
+  // Otherwise, let OrbitControls handle orbit/pan/zoom.
+  if (event.button === 0 && (event.altKey || event.ctrlKey)) {
     isPointerDown = true;
     pointerButton = event.button;
+    isSculpting = true;
+    sculptDirection = event.altKey ? -1 : 1; // Alt/Option lowers; Ctrl raises
+    controls.enabled = false; // avoid rotating while sculpting
+
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
@@ -82,18 +98,32 @@ function onPointerDown(event: PointerEvent): void {
     if (intersect && planet && actionLayer) {
       const action: ScultAction = {
         type: "scult",
-        direction: pointerButton === 0 ? "up" : "down",
+        direction: sculptDirection === 1 ? "up" : "down",
         position: { x: intersect.point.x, y: intersect.point.y, z: intersect.point.z },
       };
       actionLayer.dispatchLocal(action);
     }
     lastSculptTime = clock.getElapsedTime();
+    // Sculpt cursor
+    renderer.domElement.style.cursor = "crosshair";
+  } else if (event.button === 0 || event.button === 1 || event.button === 2) {
+    // Non-sculpt pointer down paths still tracked for state, but OrbitControls handles movement.
+    isPointerDown = true;
+    pointerButton = event.button;
+    // Orbit/Pan drag cursor
+    renderer.domElement.style.cursor = "grabbing";
   }
 }
 
 function onPointerUp(): void {
   isPointerDown = false;
   pointerButton = -1;
+  if (isSculpting) {
+    isSculpting = false;
+    controls.enabled = true;
+  }
+  // Restore default cursor after drag
+  renderer.domElement.style.cursor = "grab";
 }
 
 function onPointerMove(event: PointerEvent): void {
@@ -131,13 +161,13 @@ function animate() {
     }
   }
 
-  if (isPointerDown) {
+  if (isPointerDown && isSculpting) {
     const sculptInterval = 1 / 30;
     if (currentTime - lastSculptTime > sculptInterval) {
       if (intersect && planet && actionLayer) {
         const action: ScultAction = {
           type: "scult",
-          direction: pointerButton === 0 ? "up" : "down",
+          direction: sculptDirection === 1 ? "up" : "down",
           position: { x: intersect.point.x, y: intersect.point.y, z: intersect.point.z },
         };
         actionLayer.dispatchLocal(action);
