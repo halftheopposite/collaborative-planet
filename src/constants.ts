@@ -47,10 +47,15 @@ export const MOON_A = 130;
 export const MOON_B = 110;
 export const MOON_K = 3600;
 
+// Middle orbit (used by Mars)
+export const MARS_A = 180;
+export const MARS_B = 145;
+export const MARS_K = 4000;
+
 // Outer orbit (used by Saturn)
-export const SATURN_A = 180;
-export const SATURN_B = 145;
-export const SATURN_K = 4000;
+export const SATURN_A = 280;
+export const SATURN_B = 220;
+export const SATURN_K = 6000;
 
 export const SUN_A = 520;
 export const SUN_B = 400;

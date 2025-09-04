@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import {
   CLOUD_LAYER_OFFSET,
+  MARS_A,
+  MARS_B,
+  MARS_K,
   MOON_A,
   MOON_B,
   MOON_K,
@@ -14,6 +17,8 @@ import {
 } from "../constants";
 import atmosphereFragmentShader from "../shaders/atmosphere.frag.glsl";
 import atmosphereVertexShader from "../shaders/atmosphere.vert.glsl";
+import marsFragmentShader from "../shaders/mars.frag.glsl";
+import marsVertexShader from "../shaders/mars.vert.glsl";
 import moonFragmentShader from "../shaders/moon.frag.glsl";
 import moonVertexShader from "../shaders/moon.vert.glsl";
 import ringFragmentShader from "../shaders/ring.frag.glsl";
@@ -32,10 +37,13 @@ let sunAtmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | 
 let moonOrbit1: THREE.Group | null = null;
 let saturn: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let saturnRings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null = null;
+let marsOrbit: THREE.Group | null = null;
+let mars: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let moonOrbit2: THREE.Group | null = null;
 let moon: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let sunAngle = 0;
 let saturnAngle = 0;
+let marsAngle = 0;
 let moonAngle = 0;
 
 export function create(scene: THREE.Scene) {
@@ -60,6 +68,14 @@ export function create(scene: THREE.Scene) {
     saturnRings.rotation.z = 0.35;
     saturn.add(saturnRings);
   }
+
+  // Mars and its orbit - middle orbit
+  marsOrbit = new THREE.Group();
+  mars = createMars(4.2); // Slightly bigger than moon (3.5)
+  marsOrbit.add(mars);
+  marsOrbit.rotation.x = -0.1;
+  scene.add(marsOrbit);
+  marsOrbit.add(createOrbitEllipse(MARS_A, MARS_B, 0xff6644, 256, 0.35));
 
   // Regular moon - now using inner orbit
   moonOrbit2 = new THREE.Group();
@@ -115,6 +131,24 @@ export function update(time: number, dt: number) {
       if (ringMat.uniforms && ringMat.uniforms.uTime) {
         ringMat.uniforms.uTime.value = time;
       }
+    }
+  }
+
+  // Update Mars - middle orbit (MARS parameters)
+  if (mars && marsOrbit) {
+    const x_mars = MARS_A * Math.cos(marsAngle);
+    const z_mars = MARS_B * Math.sin(marsAngle);
+    const r_mars = Math.sqrt(x_mars * x_mars + z_mars * z_mars);
+    const angularVelocity = MARS_K / (r_mars * r_mars);
+    marsAngle += angularVelocity * dt;
+    mars.position.x = x_mars;
+    mars.position.z = z_mars;
+    mars.rotation.y += 0.003;
+
+    // Update Mars material time uniform
+    const marsMat = mars.material as THREE.ShaderMaterial;
+    if (marsMat.uniforms && marsMat.uniforms.uTime) {
+      marsMat.uniforms.uTime.value = time;
     }
   }
 
@@ -261,6 +295,21 @@ function createMoon(size: number): THREE.Mesh<THREE.SphereGeometry, THREE.Shader
     fragmentShader: moonFragmentShader,
   });
   return new THREE.Mesh(moonGeometry, moonMaterial);
+}
+
+function createMars(size: number): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
+  const marsGeometry = new THREE.SphereGeometry(size, 32, 32);
+  const marsMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uTintColor: { value: new THREE.Color(0xffffff) },
+      uTintStrength: { value: 0.0 },
+      uBrightness: { value: 1.0 },
+    },
+    vertexShader: marsVertexShader,
+    fragmentShader: marsFragmentShader,
+  });
+  return new THREE.Mesh(marsGeometry, marsMaterial);
 }
 
 function createSaturn(size: number): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
