@@ -9,10 +9,17 @@ import {
   SCULPT_RADIUS,
   SCULPT_STRENGTH,
   WATER_LEVEL,
+  WAVE_AMPLITUDE,
+  WAVE_AMPLITUDE_MAX,
+  WAVE_AMPLITUDE_MIN,
+  WAVE_FREQUENCY,
+  WAVE_SPEED,
   type Layer,
 } from "../constants";
 import planetFragmentShader from "../shaders/planet.frag.glsl";
 import planetVertexShader from "../shaders/planet.vert.glsl";
+import waterFragmentShader from "../shaders/water.frag.glsl";
+import waterVertexShader from "../shaders/water.vert.glsl";
 import { fbm3JS } from "../utils/noise";
 import { intersectDisplacedMesh, type DisplacedIntersection } from "../utils/raycast";
 
@@ -183,6 +190,12 @@ export function createPlanet(): Planet {
       // Water/foam
       uWaterLevel: { value: WATER_LEVEL },
       uFoamWidth: { value: FOAM_WIDTH },
+      // Wave parameters for foam calculation (same as water shader)
+      uWaveAmplitude: { value: WAVE_AMPLITUDE },
+      uWaveAmplitudeMin: { value: WAVE_AMPLITUDE_MIN },
+      uWaveAmplitudeMax: { value: WAVE_AMPLITUDE_MAX },
+      uWaveFrequency: { value: WAVE_FREQUENCY },
+      uWaveSpeed: { value: WAVE_SPEED },
       // Color grading
       uExposure: { value: 1.15 },
     },
@@ -199,10 +212,20 @@ export function createPlanet(): Planet {
     128,
     128
   );
-  const waterMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(0x0a3d66), // deep blue
+  const waterMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uPlanetRadius: { value: PLANET_RADIUS },
+      uWaveAmplitude: { value: WAVE_AMPLITUDE },
+      uWaveAmplitudeMin: { value: WAVE_AMPLITUDE_MIN },
+      uWaveAmplitudeMax: { value: WAVE_AMPLITUDE_MAX },
+      uWaveFrequency: { value: WAVE_FREQUENCY },
+      uWaveSpeed: { value: WAVE_SPEED },
+      uOpacity: { value: 0.72 },
+    },
+    vertexShader: waterVertexShader,
+    fragmentShader: waterFragmentShader,
     transparent: true,
-    opacity: 0.72, // slight transparency so shore foam is visible underwater
     depthWrite: false, // don't write depth so underlying shore remains visible
   });
   const waterMesh = new THREE.Mesh(waterGeom, waterMat);
@@ -211,6 +234,7 @@ export function createPlanet(): Planet {
 
   function update(time: number) {
     material.uniforms.uTime.value = time;
+    waterMat.uniforms.uTime.value = time;
   }
 
   function setCursor(hit: DisplacedIntersection | null) {

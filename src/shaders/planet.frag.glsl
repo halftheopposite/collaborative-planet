@@ -10,6 +10,12 @@ uniform float uCursorActive;
 // Water/foam
 uniform float uWaterLevel;   // in height units relative to base radius
 uniform float uFoamWidth;    // width of foam band in height units
+// Wave parameters for foam calculation
+uniform float uWaveAmplitude;
+uniform float uWaveAmplitudeMin;
+uniform float uWaveAmplitudeMax;
+uniform float uWaveFrequency;
+uniform float uWaveSpeed;
 
 // Normalization bounds for vHeight
 uniform float uMinHeight;
@@ -79,12 +85,35 @@ void main() {
     vec3 finalColor = c;
 
     // (lava overlay removed)
-    // Shoreline foam: highlight where terrain height crosses water level.
-    // Use vHeight (height offset from base radius) and render a foam band centered at uWaterLevel.
+    // Shoreline foam: highlight where terrain height crosses water level with wave displacement.
+    // Use vHeight (height offset from base radius) and render a foam band centered at uWaterLevel + wave displacement.
     {
-        float foamCenter = uWaterLevel;           // height where water surface sits
+        // Calculate wave displacement at this fragment position (same as water vertex shader)
+        vec3 worldPos = vPosition; // In model space, close enough for wave calculation
+        float time = uTime * uWaveSpeed;
+        
+        // Primary wave (larger, slower)
+        vec3 wavePos1 = worldPos * uWaveFrequency + vec3(time * 0.8, 0.0, time * 0.6);
+        float wave1 = sin(wavePos1.x) * cos(wavePos1.z) * uWaveAmplitude;
+        
+        // Secondary wave (medium, different direction)
+        vec3 wavePos2 = worldPos * (uWaveFrequency * 1.5) + vec3(time * -0.5, 0.0, time * 1.2);
+        float wave2 = sin(wavePos2.x + wavePos2.z) * uWaveAmplitude * 0.6;
+        
+        // Tertiary wave (smaller, faster)
+        vec3 wavePos3 = worldPos * (uWaveFrequency * 3.0) + vec3(time * 1.5, 0.0, time * -0.8);
+        float wave3 = sin(wavePos3.x * 1.3 + wavePos3.z * 0.7) * uWaveAmplitude * 0.3;
+        
+        // Add noise for more natural variation
+        vec3 noisePos = normalize(vPosition) * 8.0 + vec3(0.0, time * 0.3, 0.0);
+        float waveNoise = fbm3(noisePos) * uWaveAmplitude * 0.4;
+        
+        // Combine all waves
+        float totalWaveHeight = wave1 + wave2 + wave3 + waveNoise;
+        
+        float foamCenter = uWaterLevel + totalWaveHeight;  // height where dynamic water surface sits
         float halfW = max(1e-4, 0.5 * uFoamWidth);
-        // Distance of current fragment height to the water plane in height-units
+        // Distance of current fragment height to the dynamic water plane in height-units
         float hdist = abs(vHeight - foamCenter);
         // Soft band falloff using smoothstep; 1 at center, 0 beyond width
         float foamMask = 1.0 - smoothstep(0.0, halfW, hdist);

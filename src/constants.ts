@@ -34,6 +34,13 @@ export const CLOUD_LAYER_OFFSET = 2.5;
 // Width of the foam band around the waterline (in height units, same as MIN/MAX_HEIGHT)
 export const FOAM_WIDTH = 0.35;
 
+// Water wave parameters
+export const WAVE_AMPLITUDE = 0.3; // Reduced from 0.8
+export const WAVE_AMPLITUDE_MIN = 0.1;
+export const WAVE_AMPLITUDE_MAX = 0.6;
+export const WAVE_FREQUENCY = 0.02;
+export const WAVE_SPEED = 0.5;
+
 // Orbit parameters
 export const MOON1_A = 130;
 export const MOON1_B = 110;
