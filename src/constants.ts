@@ -20,8 +20,6 @@ export const CONTROLS_MAX_DISTANCE = 300;
 // Orbit drag speed scaling (near -> far)
 export const ORBIT_ROTATE_SPEED_NEAR = 0.4;
 export const ORBIT_ROTATE_SPEED_FAR = 1.6;
-export const ORBIT_PAN_SPEED_NEAR = 0.4;
-export const ORBIT_PAN_SPEED_FAR = 1.6;
 
 // Sculpting cadence (actions per second while dragging)
 export const SCULPT_RATE_HZ = 30;

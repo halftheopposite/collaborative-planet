@@ -10,8 +10,6 @@ import {
   CAMERA_START_Z,
   CONTROLS_MAX_DISTANCE,
   CONTROLS_MIN_DISTANCE,
-  ORBIT_PAN_SPEED_FAR,
-  ORBIT_PAN_SPEED_NEAR,
   ORBIT_ROTATE_SPEED_FAR,
   ORBIT_ROTATE_SPEED_NEAR,
   SCULPT_RATE_HZ,
@@ -41,7 +39,6 @@ let pointerButton: number = -1;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let lastSculptTime: number = 0;
-let coordsDisplay: HTMLElement | null = null;
 let isSculpting: boolean = false;
 let sculptDirection: 1 | -1 = 1; // 1 = raise, -1 = lower
 
@@ -52,7 +49,6 @@ function updateControlSpeeds() {
   const max = controls.maxDistance || min + 1;
   const t = THREE.MathUtils.clamp((dist - min) / Math.max(1e-6, max - min), 0, 1);
   controls.rotateSpeed = THREE.MathUtils.lerp(ORBIT_ROTATE_SPEED_NEAR, ORBIT_ROTATE_SPEED_FAR, t);
-  controls.panSpeed = THREE.MathUtils.lerp(ORBIT_PAN_SPEED_NEAR, ORBIT_PAN_SPEED_FAR, t);
 }
 
 // Timekeeping
@@ -64,7 +60,6 @@ let lastTime = 0;
 function init() {
   scene = new THREE.Scene();
   clock = new THREE.Clock();
-  coordsDisplay = document.getElementById("coords-display");
   camera = new THREE.PerspectiveCamera(
     CAMERA_FOV,
     window.innerWidth / window.innerHeight,
@@ -82,14 +77,14 @@ function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.minDistance = CONTROLS_MIN_DISTANCE;
   controls.maxDistance = CONTROLS_MAX_DISTANCE;
-  controls.enablePan = true;
-  // Standard controls: left-drag orbit, wheel/middle to dolly, right to pan
+  controls.enablePan = false;
+  // Standard controls: left-drag orbit, wheel/middle to dolly
   controls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
     MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN,
+    RIGHT: THREE.MOUSE.ROTATE,
   };
-  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
   updateControlSpeeds();
   scene.add(new THREE.AmbientLight(0xffffff, 0.1));
   planet = createPlanet();
@@ -180,7 +175,7 @@ function onPointerDown(event: PointerEvent): void {
   // Sculpt only when holding a modifier with LEFT button:
   // - Ctrl + Left: raise (up)
   // - Alt/Option + Left: lower (down)
-  // Otherwise, let OrbitControls handle orbit/pan/zoom.
+  // Otherwise, let OrbitControls handle orbit/zoom.
   if (event.button === 0 && (event.altKey || event.ctrlKey)) {
     isPointerDown = true;
     pointerButton = event.button;
@@ -207,7 +202,7 @@ function onPointerDown(event: PointerEvent): void {
     // Non-sculpt pointer down paths still tracked for state, but OrbitControls handles movement.
     isPointerDown = true;
     pointerButton = event.button;
-    // Orbit/Pan drag cursor
+    // Orbit drag cursor
     renderer.domElement.style.cursor = "grabbing";
   }
 }
@@ -246,17 +241,8 @@ function animate() {
 
   if (intersect) {
     planet?.setCursor(intersect);
-    if (coordsDisplay) {
-      const p = intersect.point;
-      coordsDisplay.textContent = `X: ${p.x.toFixed(2)}\nY: ${p.y.toFixed(
-        2
-      )}\nZ: ${p.z.toFixed(2)}`;
-    }
   } else {
     planet?.setCursor(null);
-    if (coordsDisplay) {
-      coordsDisplay.textContent = `X: --\nY: --\nZ: --`;
-    }
   }
 
   if (isPointerDown && isSculpting) {

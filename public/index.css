@@ -29,16 +29,3 @@ canvas {
 .instructions p {
   margin: 0;
 }
-
-.coords {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  color: white;
-  font-family: monospace;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
-  pointer-events: none;
-  white-space: pre; /* Ensures newlines are rendered */
-}
