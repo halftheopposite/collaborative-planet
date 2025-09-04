@@ -1,17 +1,17 @@
-// Simple persistence utilities for saving and loading the planet height map to localStorage
+// Simple persistence utilities for saving and loading the earth height map to localStorage
 // We store a small JSON wrapper with metadata and a base64 encoded Float32Array payload.
 
-const LS_KEY = "planet-heights-v1";
+const LS_KEY = "earth-heights-v1";
 const LS_KEY_CAMERA = "camera-state-v1";
 
-export type PlanetHeightsPayload = {
+export type EarthHeightsPayload = {
   version: 1;
   length: number;
   // Base64 of the underlying Float32Array bytes
   data: string;
 };
 
-export function encodeHeights(heights: Float32Array): PlanetHeightsPayload {
+export function encodeHeights(heights: Float32Array): EarthHeightsPayload {
   return {
     version: 1,
     length: heights.length,
@@ -19,7 +19,7 @@ export function encodeHeights(heights: Float32Array): PlanetHeightsPayload {
   };
 }
 
-export function decodeHeights(payload: PlanetHeightsPayload): Float32Array | null {
+export function decodeHeights(payload: EarthHeightsPayload): Float32Array | null {
   if (!payload || payload.version !== 1 || typeof payload.length !== "number") return null;
   const buf = arrayBufferFromBase64(payload.data);
   if (!buf) return null;
@@ -34,7 +34,7 @@ export function saveHeightsToLocalStorage(heights: Float32Array) {
     localStorage.setItem(LS_KEY, JSON.stringify(payload));
   } catch (e) {
     // Ignore quota or serialization errors
-    console.warn("Failed to save planet heights:", e);
+    console.warn("Failed to save earth heights:", e);
   }
 }
 
@@ -42,10 +42,10 @@ export function loadHeightsFromLocalStorage(): Float32Array | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
-    const payload = JSON.parse(raw) as PlanetHeightsPayload;
+    const payload = JSON.parse(raw) as EarthHeightsPayload;
     return decodeHeights(payload);
   } catch (e) {
-    console.warn("Failed to load planet heights:", e);
+    console.warn("Failed to load earth heights:", e);
     return null;
   }
 }

@@ -1,7 +1,7 @@
 // Shared configuration constants
 
-export const PLANET_RADIUS = 60;
-export const PLANET_SEGMENTS = 64; // segments per cube face for quad sphere
+export const EARTH_RADIUS = 60;
+export const EARTH_SEGMENTS = 64; // segments per cube face for quad sphere
 export const MIN_HEIGHT = -3.75;
 export const MAX_HEIGHT = 3;
 export const SCULPT_RADIUS = 3;
@@ -25,7 +25,7 @@ export const ORBIT_ROTATE_SPEED_FAR = 1.6;
 export const SCULPT_RATE_HZ = 30;
 
 // Environment layers
-// Water level is a height relative to PLANET_RADIUS (negative is below base radius)
+// Water level is a height relative to EARTH_RADIUS (negative is below base radius)
 export const WATER_LEVEL = -3;
 // Cloud shell offset above base radius
 export const CLOUD_LAYER_OFFSET = 2.5;
@@ -64,18 +64,18 @@ export const SUN_K = 12000;
 // Birds system
 export const BIRD_COUNT = 50;
 export const BIRD_SCALE = 0.3;
-export const BIRD_HEIGHT_OFFSET = 2.5; // Height above planet surface (constant orbital height)
-export const BIRD_SPEED = 2.0; // Movement speed around planet
+export const BIRD_HEIGHT_OFFSET = 2.5; // Height above earth surface (constant orbital height)
+export const BIRD_SPEED = 2.0; // Movement speed around earth
 export const BIRD_MIN_FLAP_SPEED = 10; // Minimum wing flapping speed (Hz)
 export const BIRD_MAX_FLAP_SPEED = 20; // Maximum wing flapping speed (Hz)
 
-// --- Planet material layers (normalized 0..1) ---
+// --- Earth material layers (normalized 0..1) ---
 // Define color layers from MIN_HEIGHT (0) to MAX_HEIGHT (1). Colors can be hex strings or numbers.
 export type Layer = { start: number; color: string | number };
 
 // Defaults approximate the current procedural palette using thresholds mapped to normalized space.
 // You can edit freely; add/remove entries as needed. Ensure the last entry reaches 1.0 for a terminal color.
-export const PLANET_LAYERS: Layer[] = [
+export const EARTH_LAYERS: Layer[] = [
   { start: 0.0, color: "#4D4D59" }, // bedrock
   { start: 0.1, color: "#D9C79E" }, // sand
   { start: 0.4, color: "#c78b50" }, // dirt

@@ -7,7 +7,7 @@ import {
   MOON_A,
   MOON_B,
   MOON_K,
-  PLANET_RADIUS,
+  EARTH_RADIUS,
   SATURN_A,
   SATURN_B,
   SATURN_K,
@@ -167,7 +167,7 @@ export function update(time: number, dt: number) {
 
 // Internals
 function createAtmosphere(scene: THREE.Scene) {
-  const atmosphereGeometry = new THREE.SphereGeometry(PLANET_RADIUS + 5, 128, 128);
+  const atmosphereGeometry = new THREE.SphereGeometry(EARTH_RADIUS + 5, 128, 128);
   const atmosphereMaterial = new THREE.ShaderMaterial({
     vertexShader: atmosphereVertexShader,
     fragmentShader: atmosphereFragmentShader,
@@ -181,7 +181,7 @@ function createAtmosphere(scene: THREE.Scene) {
 }
 
 function createClouds(scene: THREE.Scene) {
-  const cloudGeometry = new THREE.SphereGeometry(PLANET_RADIUS + CLOUD_LAYER_OFFSET, 128, 128);
+  const cloudGeometry = new THREE.SphereGeometry(EARTH_RADIUS + CLOUD_LAYER_OFFSET, 128, 128);
   const textureLoader = new THREE.TextureLoader();
   const cloudTexture = textureLoader.load(
     "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png"

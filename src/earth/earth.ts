@@ -3,9 +3,9 @@ import {
   FOAM_WIDTH,
   MAX_HEIGHT,
   MIN_HEIGHT,
-  PLANET_LAYERS,
-  PLANET_RADIUS,
-  PLANET_SEGMENTS,
+  EARTH_LAYERS,
+  EARTH_RADIUS,
+  EARTH_SEGMENTS,
   SCULPT_RADIUS,
   SCULPT_STRENGTH,
   WATER_LEVEL,
@@ -16,14 +16,14 @@ import {
   WAVE_SPEED,
   type Layer,
 } from "../constants";
-import planetFragmentShader from "../shaders/planet.frag.glsl";
-import planetVertexShader from "../shaders/planet.vert.glsl";
+import earthFragmentShader from "../shaders/earth.frag.glsl";
+import earthVertexShader from "../shaders/earth.vert.glsl";
 import waterFragmentShader from "../shaders/water.frag.glsl";
 import waterVertexShader from "../shaders/water.vert.glsl";
 import { fbm3JS } from "../utils/noise";
 import { intersectDisplacedMesh, type DisplacedIntersection } from "../utils/raycast";
 
-export type Planet = {
+export type Earth = {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   update: (time: number) => void;
   setCursor: (hit: DisplacedIntersection | null) => void;
@@ -63,7 +63,7 @@ function fixUvSeams(geometry: THREE.BufferGeometry): void {
   }
 }
 
-export function createPlanet(): Planet {
+export function createEarth(): Earth {
   const geometry = new THREE.BufferGeometry();
   const vertices: number[] = [];
   const normals: number[] = [];
@@ -84,30 +84,30 @@ export function createPlanet(): Planet {
     const axisA = new THREE.Vector3(dir.y, dir.z, dir.x);
     const axisB = new THREE.Vector3().crossVectors(dir, axisA);
 
-    for (let y = 0; y <= PLANET_SEGMENTS; y++) {
-      for (let x = 0; x <= PLANET_SEGMENTS; x++) {
-        const u = x / PLANET_SEGMENTS;
-        const v = y / PLANET_SEGMENTS;
+    for (let y = 0; y <= EARTH_SEGMENTS; y++) {
+      for (let x = 0; x <= EARTH_SEGMENTS; x++) {
+        const u = x / EARTH_SEGMENTS;
+        const v = y / EARTH_SEGMENTS;
         const pointOnCube = dir
           .clone()
           .addScaledVector(axisA, (u - 0.5) * 2)
           .addScaledVector(axisB, (v - 0.5) * 2);
         const pointOnSphere = pointOnCube.clone().normalize();
         vertices.push(
-          pointOnSphere.x * PLANET_RADIUS,
-          pointOnSphere.y * PLANET_RADIUS,
-          pointOnSphere.z * PLANET_RADIUS
+          pointOnSphere.x * EARTH_RADIUS,
+          pointOnSphere.y * EARTH_RADIUS,
+          pointOnSphere.z * EARTH_RADIUS
         );
         normals.push(pointOnSphere.x, pointOnSphere.y, pointOnSphere.z);
         uvs.push(u, v);
-        if (x < PLANET_SEGMENTS && y < PLANET_SEGMENTS) {
-          const i = vertexCount + y * (PLANET_SEGMENTS + 1) + x;
-          indices.push(i, i + 1, i + PLANET_SEGMENTS + 1);
-          indices.push(i + 1, i + PLANET_SEGMENTS + 2, i + PLANET_SEGMENTS + 1);
+        if (x < EARTH_SEGMENTS && y < EARTH_SEGMENTS) {
+          const i = vertexCount + y * (EARTH_SEGMENTS + 1) + x;
+          indices.push(i, i + 1, i + EARTH_SEGMENTS + 1);
+          indices.push(i + 1, i + EARTH_SEGMENTS + 2, i + EARTH_SEGMENTS + 1);
         }
       }
     }
-    vertexCount += (PLANET_SEGMENTS + 1) * (PLANET_SEGMENTS + 1);
+    vertexCount += (EARTH_SEGMENTS + 1) * (EARTH_SEGMENTS + 1);
   }
 
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
@@ -199,23 +199,23 @@ export function createPlanet(): Planet {
       // Color grading
       uExposure: { value: 1.15 },
     },
-    vertexShader: planetVertexShader,
-    fragmentShader: planetFragmentShader,
+    vertexShader: earthVertexShader,
+    fragmentShader: earthFragmentShader,
   });
   const mesh = new THREE.Mesh(geometry, material);
 
   // Water layer: a transparent deep-blue sphere slightly above a typical "sea level"
   // Sea level defined in constants as height relative to base radius
-  const SEA_LEVEL = PLANET_RADIUS + WATER_LEVEL; // base radius + height
+  const SEA_LEVEL = EARTH_RADIUS + WATER_LEVEL; // base radius + height
   const waterGeom = new THREE.SphereGeometry(
-    Math.max(SEA_LEVEL, PLANET_RADIUS + MIN_HEIGHT + 0.01),
+    Math.max(SEA_LEVEL, EARTH_RADIUS + MIN_HEIGHT + 0.01),
     128,
     128
   );
   const waterMat = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uPlanetRadius: { value: PLANET_RADIUS },
+      uEarthRadius: { value: EARTH_RADIUS },
       uWaveAmplitude: { value: WAVE_AMPLITUDE },
       uWaveAmplitudeMin: { value: WAVE_AMPLITUDE_MIN },
       uWaveAmplitudeMax: { value: WAVE_AMPLITUDE_MAX },
@@ -259,7 +259,7 @@ export function createPlanet(): Planet {
   function sculptAt(point: THREE.Vector3, direction: 1 | -1) {
     if (!point) return;
     const localDisplacedPoint = mesh.worldToLocal(point.clone());
-    const localBasePoint = localDisplacedPoint.normalize().multiplyScalar(PLANET_RADIUS);
+    const localBasePoint = localDisplacedPoint.normalize().multiplyScalar(EARTH_RADIUS);
     const heightAttribute = mesh.geometry.attributes.aHeight as THREE.BufferAttribute;
     const positionAttribute = mesh.geometry.attributes.position as THREE.BufferAttribute;
     let needsUpdate = false;
@@ -288,7 +288,7 @@ export function createPlanet(): Planet {
     return c instanceof THREE.Color ? c : new THREE.Color(c as any);
   }
 
-  function setLayers(layers: Parameters<Planet["setLayers"]>[0]) {
+  function setLayers(layers: Parameters<Earth["setLayers"]>[0]) {
     const sorted = [...layers]
       .map((l) => ({ start: Math.min(1, Math.max(0, l.start)), color: toColor3(l.color) }))
       .sort((a, b) => a.start - b.start);
@@ -347,9 +347,9 @@ export function createPlanet(): Planet {
     notifyHeightsChanged();
   }
 
-  // Apply PLANET_LAYERS from constants if provided
-  if (Array.isArray(PLANET_LAYERS) && PLANET_LAYERS.length > 0) {
-    const mapped: { start: number; color: THREE.Color | number | string }[] = PLANET_LAYERS.map(
+  // Apply EARTH_LAYERS from constants if provided
+  if (Array.isArray(EARTH_LAYERS) && EARTH_LAYERS.length > 0) {
+    const mapped: { start: number; color: THREE.Color | number | string }[] = EARTH_LAYERS.map(
       (l: Layer) => ({ start: l.start, color: l.color })
     );
     setLayers(mapped);

@@ -4,7 +4,7 @@ varying vec3 vNormal;
 varying float vWaveHeight;
 
 uniform float uTime;
-uniform float uPlanetRadius;
+uniform float uEarthRadius;
 
 // Wave parameters
 uniform float uWaveAmplitude;

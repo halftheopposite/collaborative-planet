@@ -14,8 +14,8 @@ import {
   ORBIT_ROTATE_SPEED_NEAR,
   SCULPT_RATE_HZ,
 } from "./constants";
+import { createEarth, type Earth } from "./earth/earth";
 import { createActionLayer, type ActionLayer } from "./net/actionLayer";
-import { createPlanet, type Planet } from "./planet/planet";
 import {
   loadCameraFromLocalStorage,
   loadHeightsFromLocalStorage,
@@ -30,7 +30,7 @@ let renderer!: THREE.WebGLRenderer;
 let controls!: OrbitControls;
 let clock!: THREE.Clock;
 
-let planet: Planet | null = null;
+let earth: Earth | null = null;
 let actionLayer: ActionLayer | null = null;
 let birdsSystem: BirdsSystem | null = null;
 
@@ -87,19 +87,19 @@ function init() {
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
   updateControlSpeeds();
   scene.add(new THREE.AmbientLight(0xffffff, 0.1));
-  planet = createPlanet();
-  scene.add(planet.mesh);
+  earth = createEarth();
+  scene.add(earth.mesh);
   createCelestials(scene);
-  actionLayer = createActionLayer(planet);
+  actionLayer = createActionLayer(earth);
 
   // Initialize birds system
-  birdsSystem = createBirdsSystem(scene, planet); // Load persisted heights if available
+  birdsSystem = createBirdsSystem(scene, earth); // Load persisted heights if available
   const saved = loadHeightsFromLocalStorage();
   if (
     saved &&
-    saved.length === (planet.mesh.geometry.attributes.aHeight as THREE.BufferAttribute).count
+    saved.length === (earth.mesh.geometry.attributes.aHeight as THREE.BufferAttribute).count
   ) {
-    planet.setHeights(saved);
+    earth.setHeights(saved);
   }
 
   // Auto-save heights with a small debounce after any sculpting change
@@ -107,16 +107,16 @@ function init() {
   const scheduleSave = () => {
     if (saveTimer !== null) window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      if (!planet) return;
-      const heights = planet.getHeights();
+      if (!earth) return;
+      const heights = earth.getHeights();
       saveHeightsToLocalStorage(heights);
       saveTimer = null;
     }, 250);
   };
-  planet.onHeightsChanged(scheduleSave);
+  earth.onHeightsChanged(scheduleSave);
   // Also flush on unload
   window.addEventListener("beforeunload", () => {
-    if (planet) saveHeightsToLocalStorage(planet.getHeights());
+    if (earth) saveHeightsToLocalStorage(earth.getHeights());
   });
 
   // Load camera state if any
@@ -156,7 +156,7 @@ function init() {
   renderer.domElement.addEventListener("pointerup", onPointerUp);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
   renderer.domElement.addEventListener("pointerout", () => {
-    planet?.setCursor(null);
+    earth?.setCursor(null);
     // Reset cursor when leaving canvas
     if (!isPointerDown) renderer.domElement.style.cursor = "grab";
   });
@@ -186,8 +186,8 @@ function onPointerDown(event: PointerEvent): void {
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
-    const intersect = planet?.intersect(raycaster) ?? null;
-    if (intersect && planet && actionLayer) {
+    const intersect = earth?.intersect(raycaster) ?? null;
+    if (intersect && earth && actionLayer) {
       const action: ScultAction = {
         type: "scult",
         direction: sculptDirection === 1 ? "up" : "down",
@@ -237,18 +237,18 @@ function animate() {
   lastTime = currentTime;
 
   raycaster.setFromCamera(pointer, camera);
-  const intersect = planet?.intersect(raycaster) ?? null;
+  const intersect = earth?.intersect(raycaster) ?? null;
 
   if (intersect) {
-    planet?.setCursor(intersect);
+    earth?.setCursor(intersect);
   } else {
-    planet?.setCursor(null);
+    earth?.setCursor(null);
   }
 
   if (isPointerDown && isSculpting) {
     const sculptInterval = 1 / SCULPT_RATE_HZ;
     if (currentTime - lastSculptTime > sculptInterval) {
-      if (intersect && planet && actionLayer) {
+      if (intersect && earth && actionLayer) {
         const action: ScultAction = {
           type: "scult",
           direction: sculptDirection === 1 ? "up" : "down",
@@ -260,9 +260,9 @@ function animate() {
     }
   }
 
-  // Update celestials and planet
+  // Update celestials and earth
   updateCelestials(currentTime, deltaTime);
-  planet?.update(currentTime);
+  earth?.update(currentTime);
 
   // Update birds system
   if (birdsSystem) {

@@ -1,6 +1,6 @@
 import type { Action, ScultAction } from "../actions";
 import { applyAction } from "../actions/apply";
-import type { Planet } from "../planet/planet";
+import type { Earth } from "../earth/earth";
 import { LocalLoopbackTransport, type ActionTransport } from "./transport";
 import type { ActionEnvelope } from "./types";
 
@@ -15,7 +15,7 @@ export class ActionLayer {
   private seq = 0;
   private clientId: string;
   constructor(
-    private planet: Planet,
+    private earth: Earth,
     private transport: ActionTransport = new LocalLoopbackTransport(),
     clientId?: string
   ) {
@@ -31,7 +31,7 @@ export class ActionLayer {
 
   private receive(env: ActionEnvelope) {
     // Later: dedupe and ordering checks. For now, apply immediately.
-    applyAction(this.planet, env.action as ScultAction);
+    applyAction(this.earth, env.action as ScultAction);
   }
 
   private wrap(action: Action): ActionEnvelope<Action> {
@@ -53,9 +53,9 @@ export class ActionLayer {
 }
 
 export function createActionLayer(
-  planet: Planet,
+  earth: Earth,
   transport?: ActionTransport,
   clientId?: string
 ): ActionLayer {
-  return new ActionLayer(planet, transport, clientId);
+  return new ActionLayer(earth, transport, clientId);
 }

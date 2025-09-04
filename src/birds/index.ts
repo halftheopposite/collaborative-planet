@@ -6,9 +6,9 @@ import {
   BIRD_MIN_FLAP_SPEED,
   BIRD_SCALE,
   BIRD_SPEED,
-  PLANET_RADIUS,
+  EARTH_RADIUS,
 } from "../constants";
-import type { Planet } from "../planet/planet";
+import type { Earth } from "../earth/earth";
 
 class Bird {
   mesh: THREE.Group;
@@ -36,7 +36,7 @@ class Bird {
     // Store position and forward direction
     this.position = position.clone();
     this.forward = forward.clone().normalize();
-    this.orbitRadius = position.length(); // Distance from planet center
+    this.orbitRadius = position.length(); // Distance from earth center
     this.turnRate = (Math.random() - 0.5) * 0.3; // Random turning tendency
 
     this.createBirdGeometry();
@@ -104,7 +104,7 @@ class Bird {
 
   private updateMovement(deltaTime: number): void {
     // Add gradual turning (left/right relative to bird)
-    const up = this.tempVector1.copy(this.position).normalize(); // Planet surface normal
+    const up = this.tempVector1.copy(this.position).normalize(); // Earth surface normal
     const right = this.tempVector2.crossVectors(this.forward, up).normalize();
 
     // Apply turning
@@ -116,7 +116,7 @@ class Bird {
     const moveDistance = BIRD_SPEED * deltaTime;
     this.position.add(this.tempVector3.copy(this.forward).multiplyScalar(moveDistance));
 
-    // Keep bird at constant distance from planet center
+    // Keep bird at constant distance from earth center
     this.position.normalize().multiplyScalar(this.orbitRadius);
 
     // Update mesh position and orientation
@@ -131,7 +131,7 @@ class Bird {
   }
 
   private updateOrientation(): void {
-    // Calculate surface normal (up direction) - points away from planet center
+    // Calculate surface normal (up direction) - points away from earth center
     const up = this.tempVector1.copy(this.position).normalize();
 
     // Ensure forward direction is tangent to the sphere surface
@@ -144,12 +144,12 @@ class Bird {
 
     // Create rotation matrix where:
     // - right vector is X axis (left-right)
-    // - up vector is Z axis (away from planet surface)
+    // - up vector is Z axis (away from earth surface)
     // - forward vector is Y axis (bird's heading)
     const matrix = new THREE.Matrix4();
     matrix.makeBasis(right, forward, up);
 
-    // Apply rotation to keep bird flat against planet surface
+    // Apply rotation to keep bird flat against earth surface
     this.mesh.setRotationFromMatrix(matrix);
   }
 }
@@ -158,21 +158,21 @@ export class BirdsSystem {
   private birds: Bird[] = [];
   private group: THREE.Group;
 
-  constructor(scene: THREE.Scene, planet: Planet) {
+  constructor(scene: THREE.Scene, earth: Earth) {
     this.group = new THREE.Group();
     scene.add(this.group);
 
-    this.initializeBirds(planet);
+    this.initializeBirds(earth);
   }
 
-  private initializeBirds(planet: Planet): void {
+  private initializeBirds(earth: Earth): void {
     for (let i = 0; i < BIRD_COUNT; i++) {
-      // Generate random position on planet surface
+      // Generate random position on earth surface
       const phi = Math.random() * Math.PI * 2;
       const theta = Math.random() * Math.PI;
 
       // Calculate position at fixed orbital height
-      const orbitRadius = PLANET_RADIUS + BIRD_HEIGHT_OFFSET;
+      const orbitRadius = EARTH_RADIUS + BIRD_HEIGHT_OFFSET;
       const birdPosition = new THREE.Vector3(
         orbitRadius * Math.sin(theta) * Math.cos(phi),
         orbitRadius * Math.sin(theta) * Math.sin(phi),
@@ -225,6 +225,6 @@ export class BirdsSystem {
   }
 }
 
-export function createBirdsSystem(scene: THREE.Scene, planet: Planet): BirdsSystem {
-  return new BirdsSystem(scene, planet);
+export function createBirdsSystem(scene: THREE.Scene, earth: Earth): BirdsSystem {
+  return new BirdsSystem(scene, earth);
 }
