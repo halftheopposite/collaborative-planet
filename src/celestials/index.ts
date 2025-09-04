@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import {
   CLOUD_LAYER_OFFSET,
+  EARTH_RADIUS,
   MARS_A,
   MARS_B,
   MARS_K,
   MOON_A,
   MOON_B,
   MOON_K,
-  EARTH_RADIUS,
   SATURN_A,
   SATURN_B,
   SATURN_K,
