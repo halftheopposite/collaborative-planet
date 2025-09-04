@@ -1,16 +1,12 @@
 import * as THREE from "three";
 import {
-  BIRD_COUNT,
-  BIRD_HEIGHT_OFFSET,
   BIRD_MAX_FLAP_SPEED,
   BIRD_MIN_FLAP_SPEED,
   BIRD_SCALE,
   BIRD_SPEED,
-  EARTH_RADIUS,
-} from "../constants";
-import type { Earth } from "../earth/earth";
+} from "../../constants";
 
-class Bird {
+export class Bird {
   mesh: THREE.Group;
   animationPhase: number;
   animationSpeed: number;
@@ -152,79 +148,4 @@ class Bird {
     // Apply rotation to keep bird flat against earth surface
     this.mesh.setRotationFromMatrix(matrix);
   }
-}
-
-export class BirdsSystem {
-  private birds: Bird[] = [];
-  private group: THREE.Group;
-
-  constructor(scene: THREE.Scene, earth: Earth) {
-    this.group = new THREE.Group();
-    scene.add(this.group);
-
-    this.initializeBirds(earth);
-  }
-
-  private initializeBirds(earth: Earth): void {
-    for (let i = 0; i < BIRD_COUNT; i++) {
-      // Generate random position on earth surface
-      const phi = Math.random() * Math.PI * 2;
-      const theta = Math.random() * Math.PI;
-
-      // Calculate position at fixed orbital height
-      const orbitRadius = EARTH_RADIUS + BIRD_HEIGHT_OFFSET;
-      const birdPosition = new THREE.Vector3(
-        orbitRadius * Math.sin(theta) * Math.cos(phi),
-        orbitRadius * Math.sin(theta) * Math.sin(phi),
-        orbitRadius * Math.cos(theta)
-      );
-
-      // Generate random forward direction tangent to the sphere
-      const surfaceNormal = birdPosition.clone().normalize();
-      const randomDir = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2
-      ).normalize();
-
-      // Project random direction onto tangent plane
-      const forward = randomDir
-        .clone()
-        .sub(surfaceNormal.clone().multiplyScalar(randomDir.dot(surfaceNormal)))
-        .normalize();
-
-      const bird = new Bird(birdPosition, forward);
-      this.birds.push(bird);
-      this.group.add(bird.mesh);
-    }
-  }
-
-  update(time: number, deltaTime: number): void {
-    for (const bird of this.birds) {
-      bird.update(time, deltaTime);
-    }
-  }
-
-  dispose(): void {
-    for (const bird of this.birds) {
-      bird.leftWing.geometry.dispose();
-      bird.rightWing.geometry.dispose();
-      if (Array.isArray(bird.leftWing.material)) {
-        bird.leftWing.material.forEach((mat) => mat.dispose());
-      } else {
-        bird.leftWing.material.dispose();
-      }
-      if (Array.isArray(bird.rightWing.material)) {
-        bird.rightWing.material.forEach((mat) => mat.dispose());
-      } else {
-        bird.rightWing.material.dispose();
-      }
-      this.group.remove(bird.mesh);
-    }
-    this.birds = [];
-  }
-}
-
-export function createBirdsSystem(scene: THREE.Scene, earth: Earth): BirdsSystem {
-  return new BirdsSystem(scene, earth);
 }

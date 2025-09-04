@@ -15,11 +15,12 @@ import {
   WAVE_SPEED,
 } from "../constants";
 import type { DisplacedIntersection } from "../utils/raycast";
+import { BirdSystem } from "../celestials/Earth/BirdSystem";
 
 export type Earth = {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   create: (scene: THREE.Scene) => void;
-  update: (time: number) => void;
+  update: (time: number, deltaTime?: number) => void;
   setCursor: (hit: DisplacedIntersection | null) => void;
   intersect: (raycaster: THREE.Raycaster) => DisplacedIntersection | null;
   sculptAt: (point: THREE.Vector3, direction: 1 | -1) => void;
@@ -29,6 +30,7 @@ export type Earth = {
   getHeights: () => Float32Array;
   setHeights: (heights: Float32Array | number[]) => void;
   onHeightsChanged: (cb: () => void) => () => void;
+  getBirdsSystem: () => BirdSystem | null;
 };
 
 export function createEarth(): Earth {
@@ -58,7 +60,9 @@ export function createEarth(): Earth {
       // Update the mesh reference after creation
       returnObj.mesh = earth.getMesh() as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
     },
-    update: (time: number) => earth.update(time),
+    update: (time: number, deltaTime?: number) => {
+      earth.update(time, deltaTime);
+    },
     setCursor: (hit: DisplacedIntersection | null) => earth.setCursor(hit),
     intersect: (raycaster: THREE.Raycaster) => earth.intersect(raycaster),
     sculptAt: (point: THREE.Vector3, direction: 1 | -1) => earth.sculptAt(point, direction),
@@ -69,6 +73,7 @@ export function createEarth(): Earth {
     getHeights: () => earth.getHeights(),
     setHeights: (heights: Float32Array | number[]) => earth.setHeights(heights),
     onHeightsChanged: (cb: () => void) => earth.onHeightsChanged(cb),
+    getBirdsSystem: () => earth.getBirdSystem(),
   };
 
   return returnObj;

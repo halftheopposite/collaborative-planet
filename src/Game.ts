@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import type { ScultAction } from "./actions";
-import { createBirdsSystem, type BirdsSystem } from "./birds";
 import { create as createCelestials, update as updateCelestials } from "./celestials";
 import {
   CAMERA_FAR,
@@ -34,7 +33,6 @@ export class Game {
   // Game objects
   private earth: Earth | null = null;
   private actionLayer: ActionLayer | null = null;
-  private birdsSystem: BirdsSystem | null = null;
 
   // Input state
   private isPointerDown: boolean = false;
@@ -125,9 +123,6 @@ export class Game {
 
     // Create action layer
     this.actionLayer = createActionLayer(this.earth);
-
-    // Initialize birds system
-    this.birdsSystem = createBirdsSystem(this.scene, this.earth);
   }
 
   private setupPersistence(): void {
@@ -326,12 +321,7 @@ export class Game {
 
     // Update celestials and earth
     updateCelestials(currentTime, deltaTime);
-    this.earth?.update(currentTime);
-
-    // Update birds system
-    if (this.birdsSystem) {
-      this.birdsSystem.update(currentTime, deltaTime);
-    }
+    this.earth?.update(currentTime, deltaTime);
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -391,7 +381,7 @@ export class Game {
     return this.earth;
   }
 
-  public getBirdsSystem(): BirdsSystem | null {
-    return this.birdsSystem;
+  public getBirdsSystem() {
+    return this.earth?.getBirdsSystem() ?? null;
   }
 }

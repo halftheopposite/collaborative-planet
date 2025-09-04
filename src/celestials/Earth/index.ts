@@ -16,15 +16,16 @@ import {
   WAVE_FREQUENCY,
   WAVE_SPEED,
   type Layer,
-} from "../constants";
-import atmosphereFragmentShader from "../shaders/atmosphere.frag.glsl";
-import atmosphereVertexShader from "../shaders/atmosphere.vert.glsl";
-import earthFragmentShader from "../shaders/earth.frag.glsl";
-import earthVertexShader from "../shaders/earth.vert.glsl";
-import waterFragmentShader from "../shaders/water.frag.glsl";
-import waterVertexShader from "../shaders/water.vert.glsl";
-import { fbm3JS } from "../utils/noise";
-import { intersectDisplacedMesh, type DisplacedIntersection } from "../utils/raycast";
+} from "../../constants";
+import atmosphereFragmentShader from "../../shaders/atmosphere.frag.glsl";
+import atmosphereVertexShader from "../../shaders/atmosphere.vert.glsl";
+import earthFragmentShader from "../../shaders/earth.frag.glsl";
+import earthVertexShader from "../../shaders/earth.vert.glsl";
+import waterFragmentShader from "../../shaders/water.frag.glsl";
+import waterVertexShader from "../../shaders/water.vert.glsl";
+import { fbm3JS } from "../../utils/noise";
+import { intersectDisplacedMesh, type DisplacedIntersection } from "../../utils/raycast";
+import { BirdSystem } from "./BirdSystem";
 
 export interface EarthConfig {
   size?: number;
@@ -50,6 +51,7 @@ export class Earth {
   private atmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
   private config: EarthConfig;
   private heightChangeListeners: Array<() => void> = [];
+  private birdSystem: BirdSystem | null = null;
 
   constructor(config: EarthConfig = {}) {
     this.config = config;
@@ -74,6 +76,9 @@ export class Earth {
 
     // Apply layers from config or constants
     this.applyDefaultLayers();
+
+    // Create bird system
+    this.birdSystem = new BirdSystem(scene);
   }
 
   private createEarthGeometry(): THREE.BufferGeometry {
@@ -351,7 +356,7 @@ export class Earth {
     }
   }
 
-  public update(time: number): void {
+  public update(time: number, deltaTime?: number): void {
     // Update earth material time uniform
     if (this.mesh && this.mesh.material instanceof THREE.ShaderMaterial) {
       const material = this.mesh.material as THREE.ShaderMaterial;
@@ -377,6 +382,11 @@ export class Earth {
     // Apply rotation if configured
     if (this.mesh && this.config.rotationSpeed) {
       this.mesh.rotation.y += this.config.rotationSpeed;
+    }
+
+    // Update bird system if deltaTime is provided
+    if (this.birdSystem && deltaTime !== undefined) {
+      this.birdSystem.update(time, deltaTime);
     }
   }
 
@@ -548,6 +558,16 @@ export class Earth {
       }
     }
 
+    // Dispose bird system
+    if (this.birdSystem) {
+      this.birdSystem.dispose();
+      this.birdSystem = null;
+    }
+
     this.heightChangeListeners.length = 0;
+  }
+
+  public getBirdSystem(): BirdSystem | null {
+    return this.birdSystem;
   }
 }
