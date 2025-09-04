@@ -26,6 +26,7 @@ import waterVertexShader from "../../shaders/water.vert.glsl";
 import { fbm3JS } from "../../utils/noise";
 import { intersectDisplacedMesh, type DisplacedIntersection } from "../../utils/raycast";
 import { BirdSystem } from "./BirdSystem";
+import { FishSystem } from "./FishSystem";
 
 export interface EarthConfig {
   size?: number;
@@ -42,6 +43,7 @@ export interface EarthConfig {
   exposure?: number;
   rotationSpeed?: number;
   layers?: Array<{ start: number; color: THREE.Color | number | string }>;
+  fishCount?: number;
 }
 
 export class Earth {
@@ -52,6 +54,7 @@ export class Earth {
   private config: EarthConfig;
   private heightChangeListeners: Array<() => void> = [];
   private birdSystem: BirdSystem | null = null;
+  private fishSystem: FishSystem | null = null;
 
   constructor(config: EarthConfig = {}) {
     this.config = config;
@@ -79,6 +82,9 @@ export class Earth {
 
     // Create bird system
     this.birdSystem = new BirdSystem(scene);
+
+    // Create fish system
+    this.fishSystem = new FishSystem(scene);
   }
 
   private createEarthGeometry(): THREE.BufferGeometry {
@@ -388,6 +394,11 @@ export class Earth {
     if (this.birdSystem && deltaTime !== undefined) {
       this.birdSystem.update(time, deltaTime);
     }
+
+    // Update fish system if deltaTime is provided
+    if (this.fishSystem && deltaTime !== undefined) {
+      this.fishSystem.update(time, deltaTime);
+    }
   }
 
   // Earth-specific methods
@@ -564,10 +575,26 @@ export class Earth {
       this.birdSystem = null;
     }
 
+    // Dispose fish system
+    if (this.fishSystem) {
+      this.fishSystem.dispose();
+      this.fishSystem = null;
+    }
+
     this.heightChangeListeners.length = 0;
   }
 
   public getBirdSystem(): BirdSystem | null {
     return this.birdSystem;
+  }
+
+  public getFishSystem(): FishSystem | null {
+    return this.fishSystem;
+  }
+
+  public setFishCount(count: number): void {
+    if (this.fishSystem) {
+      this.fishSystem.setFishCount(count);
+    }
   }
 }

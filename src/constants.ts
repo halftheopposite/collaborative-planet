@@ -28,7 +28,7 @@ export const SCULPT_RATE_HZ = 30;
 // Water level is a height relative to EARTH_RADIUS (negative is below base radius)
 export const WATER_LEVEL = -3;
 // Cloud shell offset above base radius
-export const CLOUD_LAYER_OFFSET = 2.5;
+export const CLOUD_LAYER_OFFSET = 2;
 
 // Shoreline foam
 // Width of the foam band around the waterline (in height units, same as MIN/MAX_HEIGHT)
@@ -68,6 +68,17 @@ export const BIRD_HEIGHT_OFFSET = 2.5; // Height above earth surface (constant o
 export const BIRD_SPEED = 2.0; // Movement speed around earth
 export const BIRD_MIN_FLAP_SPEED = 10; // Minimum wing flapping speed (Hz)
 export const BIRD_MAX_FLAP_SPEED = 20; // Maximum wing flapping speed (Hz)
+
+// Fish system
+export const FISH_COUNT = 100;
+export const FISH_SCALE = 0.2;
+export const FISH_DEPTH_BELOW_WATER = 2.0; // How deep below water level fish swim
+export const FISH_SPEED = 1.5; // Movement speed underwater
+export const FISH_SURFACE_SPEED = 0.8; // Speed when going to surface
+export const FISH_SURFACE_CHANCE = 0.005; // Chance per frame to surface (0.5%)
+export const FISH_SURFACE_DURATION = 2.0; // How long to stay at surface (seconds)
+export const FISH_RIPPLE_DURATION = 1.0; // Duration of surface ripple effect (seconds)
+export const FISH_RIPPLE_MAX_RADIUS = 2.0; // Maximum radius of ripple effect
 
 // --- Earth material layers (normalized 0..1) ---
 // Define color layers from MIN_HEIGHT (0) to MAX_HEIGHT (1). Colors can be hex strings or numbers.
