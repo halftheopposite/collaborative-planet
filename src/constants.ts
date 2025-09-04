@@ -42,13 +42,15 @@ export const WAVE_FREQUENCY = 0.02;
 export const WAVE_SPEED = 0.5;
 
 // Orbit parameters
-export const MOON1_A = 130;
-export const MOON1_B = 110;
-export const MOON1_K = 3600;
+// Inner orbit (used by Moon)
+export const MOON_A = 130;
+export const MOON_B = 110;
+export const MOON_K = 3600;
 
-export const MOON2_A = 180;
-export const MOON2_B = 145;
-export const MOON2_K = 4000;
+// Outer orbit (used by Saturn)
+export const SATURN_A = 180;
+export const SATURN_B = 145;
+export const SATURN_K = 4000;
 
 export const SUN_A = 520;
 export const SUN_B = 400;

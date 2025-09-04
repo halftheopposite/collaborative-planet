@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import {
   CLOUD_LAYER_OFFSET,
-  MOON1_A,
-  MOON1_B,
-  MOON1_K,
-  MOON2_A,
-  MOON2_B,
-  MOON2_K,
+  MOON_A,
+  MOON_B,
+  MOON_K,
   PLANET_RADIUS,
+  SATURN_A,
+  SATURN_B,
+  SATURN_K,
   SUN_A,
   SUN_B,
   SUN_K,
@@ -18,6 +18,8 @@ import moonFragmentShader from "../shaders/moon.frag.glsl";
 import moonVertexShader from "../shaders/moon.vert.glsl";
 import ringFragmentShader from "../shaders/ring.frag.glsl";
 import ringVertexShader from "../shaders/ring.vert.glsl";
+import saturnFragmentShader from "../shaders/saturn.frag.glsl";
+import saturnVertexShader from "../shaders/saturn.vert.glsl";
 import sunSurfaceFragmentShader from "../shaders/sun.frag.glsl";
 import sunSurfaceVertexShader from "../shaders/sun.vert.glsl";
 
@@ -27,13 +29,13 @@ let cloudMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null 
 let atmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let sunMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let moonOrbit1: THREE.Group | null = null;
-let moon1: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
-let moon1Rings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null = null;
+let saturn: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
+let saturnRings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null = null;
 let moonOrbit2: THREE.Group | null = null;
-let moon2: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
+let moon: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let sunAngle = 0;
-let moon1Angle = 0;
-let moon2Angle = 0;
+let saturnAngle = 0;
+let moonAngle = 0;
 
 export function create(scene: THREE.Scene) {
   createStars(scene);
@@ -41,29 +43,30 @@ export function create(scene: THREE.Scene) {
   createAtmosphere(scene);
   createSun(scene);
 
-  // Moons and their orbits
+  // Saturn and its orbit (the one with rings) - now using outer orbit
   moonOrbit1 = new THREE.Group();
-  moon1 = createMoon(5);
-  moonOrbit1.add(moon1);
+  saturn = createSaturn(5);
+  moonOrbit1.add(saturn);
   moonOrbit1.rotation.x = 0.2;
   scene.add(moonOrbit1);
-  moonOrbit1.add(createOrbitEllipse(MOON1_A, MOON1_B, 0x6688ff, 256, 0.35));
-  if (moon1) {
-    moon1.material.uniforms.uTintColor.value = new THREE.Color(0xffffff);
-    moon1.material.uniforms.uTintStrength.value = 0.7;
-    moon1.material.uniforms.uBrightness.value = 1.2;
-    moon1Rings = createMoonRings(7.0, 12.0);
-    moon1Rings.rotation.x = Math.PI / 2;
-    moon1Rings.rotation.z = 0.35;
-    moon1.add(moon1Rings);
+  moonOrbit1.add(createOrbitEllipse(SATURN_A, SATURN_B, 0x6688ff, 256, 0.35));
+  if (saturn) {
+    saturn.material.uniforms.uTintColor.value = new THREE.Color(0xf4e6a1); // Saturn's yellowish color
+    saturn.material.uniforms.uTintStrength.value = 0.3;
+    saturn.material.uniforms.uBrightness.value = 1.0;
+    saturnRings = createMoonRings(7.0, 12.0);
+    saturnRings.rotation.x = Math.PI / 2;
+    saturnRings.rotation.z = 0.35;
+    saturn.add(saturnRings);
   }
 
+  // Regular moon - now using inner orbit
   moonOrbit2 = new THREE.Group();
-  moon2 = createMoon(3.5);
-  moonOrbit2.add(moon2);
+  moon = createMoon(3.5);
+  moonOrbit2.add(moon);
   moonOrbit2.rotation.x = -0.3;
   scene.add(moonOrbit2);
-  moonOrbit2.add(createOrbitEllipse(MOON2_A, MOON2_B, 0x88ff88, 256, 0.35));
+  moonOrbit2.add(createOrbitEllipse(MOON_A, MOON_B, 0x88ff88, 256, 0.35));
 }
 
 export function update(time: number, dt: number) {
@@ -88,27 +91,28 @@ export function update(time: number, dt: number) {
     cloudMesh.rotation.x += 0.0002;
   }
 
-  // Update moons
-  if (moon1 && moonOrbit1) {
-    const x1 = MOON1_A * Math.cos(moon1Angle);
-    const z1 = MOON1_B * Math.sin(moon1Angle);
+  // Update Saturn - now using outer orbit (SATURN parameters)
+  if (saturn && moonOrbit1) {
+    const x1 = SATURN_A * Math.cos(saturnAngle);
+    const z1 = SATURN_B * Math.sin(saturnAngle);
     const r1 = Math.sqrt(x1 * x1 + z1 * z1);
-    const angularVelocity = MOON1_K / (r1 * r1);
-    moon1Angle += angularVelocity * dt;
-    moon1.position.x = x1;
-    moon1.position.z = z1;
-    moon1.rotation.y += 0.004;
+    const angularVelocity = SATURN_K / (r1 * r1);
+    saturnAngle += angularVelocity * dt;
+    saturn.position.x = x1;
+    saturn.position.z = z1;
+    saturn.rotation.y += 0.004;
   }
 
-  if (moon2 && moonOrbit2) {
-    const x2 = MOON2_A * Math.cos(moon2Angle);
-    const z2 = MOON2_B * Math.sin(moon2Angle);
+  // Update moon - now using inner orbit (MOON parameters)
+  if (moon && moonOrbit2) {
+    const x2 = MOON_A * Math.cos(moonAngle);
+    const z2 = MOON_B * Math.sin(moonAngle);
     const r2 = Math.sqrt(x2 * x2 + z2 * z2);
-    const angularVelocity = MOON2_K / (r2 * r2);
-    moon2Angle += angularVelocity * dt;
-    moon2.position.x = x2;
-    moon2.position.z = z2;
-    moon2.rotation.y += 0.002;
+    const angularVelocity = MOON_K / (r2 * r2);
+    moonAngle += angularVelocity * dt;
+    moon.position.x = x2;
+    moon.position.z = z2;
+    moon.rotation.y += 0.002;
   }
 }
 
@@ -212,6 +216,21 @@ function createMoon(size: number): THREE.Mesh<THREE.SphereGeometry, THREE.Shader
     fragmentShader: moonFragmentShader,
   });
   return new THREE.Mesh(moonGeometry, moonMaterial);
+}
+
+function createSaturn(size: number): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
+  const saturnGeometry = new THREE.SphereGeometry(size, 32, 32);
+  const saturnMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uTintColor: { value: new THREE.Color(0xffffff) },
+      uTintStrength: { value: 0.0 },
+      uBrightness: { value: 1.0 },
+    },
+    vertexShader: saturnVertexShader,
+    fragmentShader: saturnFragmentShader,
+  });
+  return new THREE.Mesh(saturnGeometry, saturnMaterial);
 }
 
 function createMoonRings(
