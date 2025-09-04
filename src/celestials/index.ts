@@ -51,9 +51,9 @@ export function create(scene: THREE.Scene) {
   scene.add(moonOrbit1);
   moonOrbit1.add(createOrbitEllipse(SATURN_A, SATURN_B, 0x6688ff, 256, 0.35));
   if (saturn) {
-    saturn.material.uniforms.uTintColor.value = new THREE.Color(0xf4e6a1); // Saturn's yellowish color
-    saturn.material.uniforms.uTintStrength.value = 0.3;
-    saturn.material.uniforms.uBrightness.value = 1.0;
+    saturn.material.uniforms.uTintColor.value = new THREE.Color(0xffffff); // Neutral tint to preserve natural colors
+    saturn.material.uniforms.uTintStrength.value = 0.0; // No tinting - let natural gas giant colors show
+    saturn.material.uniforms.uBrightness.value = 1.1; // Slightly brighter for visibility
     saturnRings = createMoonRings(7.0, 12.0);
     saturnRings.rotation.x = Math.PI / 2;
     saturnRings.rotation.z = 0.35;
@@ -101,6 +101,20 @@ export function update(time: number, dt: number) {
     saturn.position.x = x1;
     saturn.position.z = z1;
     saturn.rotation.y += 0.004;
+
+    // Update Saturn's material time uniform
+    const saturnMat = saturn.material as THREE.ShaderMaterial;
+    if (saturnMat.uniforms && saturnMat.uniforms.uTime) {
+      saturnMat.uniforms.uTime.value = time;
+    }
+
+    // Update rings time uniform if they exist
+    if (saturnRings) {
+      const ringMat = saturnRings.material as THREE.ShaderMaterial;
+      if (ringMat.uniforms && ringMat.uniforms.uTime) {
+        ringMat.uniforms.uTime.value = time;
+      }
+    }
   }
 
   // Update moon - now using inner orbit (MOON parameters)
@@ -240,19 +254,21 @@ function createMoonRings(
   const geom = new THREE.RingGeometry(innerRadius, outerRadius, 128, 1);
   const mat = new THREE.ShaderMaterial({
     uniforms: {
-      uColor1: { value: new THREE.Color(0xf4f0e8) },
-      uColor2: { value: new THREE.Color(0xd8d6d0) },
+      uColor1: { value: new THREE.Color(0xf8f6f2) }, // Brighter ice white
+      uColor2: { value: new THREE.Color(0xe8e2d8) }, // Warm ice tone
       uInner: { value: innerRadius },
       uOuter: { value: outerRadius },
-      uOpacity: { value: 0.85 },
-      uBandFreq: { value: 28.0 },
-      uBandContrast: { value: 2.0 },
+      uOpacity: { value: 0.9 }, // Good visibility
+      uBandFreq: { value: 28.0 }, // Original working value
+      uBandContrast: { value: 2.0 }, // Original working value
+      uTime: { value: 0.0 }, // For animation
     },
     vertexShader: ringVertexShader,
     fragmentShader: ringFragmentShader,
     transparent: true,
     depthWrite: false,
     side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, // Restore the perfect blending mode
   });
   return new THREE.Mesh(geom, mat);
 }
