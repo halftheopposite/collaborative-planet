@@ -10,12 +10,12 @@ export const SCULPT_STRENGTH = 0.25;
 // Camera
 export const CAMERA_FOV = 60;
 export const CAMERA_NEAR = 0.1;
-export const CAMERA_FAR = 1000;
+export const CAMERA_FAR = 2000;
 export const CAMERA_START_Z = 150;
 
 // Orbit controls distances
 export const CONTROLS_MIN_DISTANCE = 80;
-export const CONTROLS_MAX_DISTANCE = 300;
+export const CONTROLS_MAX_DISTANCE = 650;
 
 // Orbit drag speed scaling (near -> far)
 export const ORBIT_ROTATE_SPEED_NEAR = 0.4;

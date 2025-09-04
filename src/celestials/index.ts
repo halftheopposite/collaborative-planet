@@ -28,6 +28,7 @@ let sunOrbit: THREE.Group | null = null;
 let cloudMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
 let atmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let sunMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
+let sunAtmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let moonOrbit1: THREE.Group | null = null;
 let saturn: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 let saturnRings: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial> | null = null;
@@ -172,6 +173,26 @@ function createSun(scene: THREE.Scene) {
     fragmentShader: sunSurfaceFragmentShader,
   });
   sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+
+  // Create yellow atmosphere around the sun
+  const sunAtmosphereGeometry = new THREE.SphereGeometry(15 + 3, 64, 64); // slightly larger than sun
+  const sunAtmosphereMaterial = new THREE.ShaderMaterial({
+    vertexShader: atmosphereVertexShader,
+    fragmentShader: `
+      varying vec3 vNormal;
+      void main() {
+          float intensity = pow( 0.7 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 1.5 );
+          vec3 glowColor = vec3( 1.0, 0.8, 0.2 ); // Yellow-orange glow
+          gl_FragColor = vec4( glowColor, 1.0 ) * intensity;
+      }
+    `,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+    transparent: true,
+  });
+  sunAtmosphereMesh = new THREE.Mesh(sunAtmosphereGeometry, sunAtmosphereMaterial);
+  sunMesh.add(sunAtmosphereMesh); // Add atmosphere to sun so they move together
+
   const sunLight = new THREE.PointLight(0xffffff, 15.0, 0, 1.5);
   sunMesh.add(sunLight);
   sunMesh.position.set(SUN_A * Math.cos(sunAngle), 0, SUN_B * Math.sin(sunAngle));
@@ -182,10 +203,20 @@ function createSun(scene: THREE.Scene) {
 
 function createStars(scene: THREE.Scene) {
   const vertices: number[] = [];
+  const minDistance = 600; // Minimum distance from center (outside sun's orbit)
+  const maxDistance = 1500; // Maximum distance for stars
+
   for (let i = 0; i < 5000; i++) {
-    const x = THREE.MathUtils.randFloatSpread(2000);
-    const y = THREE.MathUtils.randFloatSpread(2000);
-    const z = THREE.MathUtils.randFloatSpread(2000);
+    let x, y, z, distance;
+
+    // Generate stars outside the solar system's elliptical boundary
+    do {
+      x = THREE.MathUtils.randFloatSpread(2 * maxDistance);
+      y = THREE.MathUtils.randFloatSpread(2 * maxDistance);
+      z = THREE.MathUtils.randFloatSpread(2 * maxDistance);
+      distance = Math.sqrt(x * x + y * y + z * z);
+    } while (distance < minDistance || distance > maxDistance);
+
     vertices.push(x, y, z);
   }
   const geometry = new THREE.BufferGeometry();
