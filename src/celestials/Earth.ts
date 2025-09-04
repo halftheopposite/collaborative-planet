@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+  CLOUD_LAYER_OFFSET,
   EARTH_LAYERS,
   EARTH_RADIUS,
   EARTH_SEGMENTS,
@@ -16,6 +17,8 @@ import {
   WAVE_SPEED,
   type Layer,
 } from "../constants";
+import atmosphereFragmentShader from "../shaders/atmosphere.frag.glsl";
+import atmosphereVertexShader from "../shaders/atmosphere.vert.glsl";
 import earthFragmentShader from "../shaders/earth.frag.glsl";
 import earthVertexShader from "../shaders/earth.vert.glsl";
 import waterFragmentShader from "../shaders/water.frag.glsl";
@@ -43,6 +46,8 @@ export interface EarthConfig {
 export class Earth {
   private mesh: THREE.Mesh | null = null;
   private waterMesh: THREE.Mesh | null = null;
+  private cloudMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
+  private atmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
   private config: EarthConfig;
   private heightChangeListeners: Array<() => void> = [];
 
@@ -57,6 +62,12 @@ export class Earth {
 
     // Create water layer
     this.createWaterLayer(this.mesh);
+
+    // Create atmosphere
+    this.createAtmosphere(scene);
+
+    // Create clouds
+    this.createClouds(scene);
 
     // Add to scene
     scene.add(this.mesh);
@@ -297,6 +308,40 @@ export class Earth {
     parent.add(this.waterMesh);
   }
 
+  private createAtmosphere(scene: THREE.Scene): void {
+    const radius = this.config.size || EARTH_RADIUS;
+    const atmosphereGeometry = new THREE.SphereGeometry(radius + 5, 128, 128);
+    const atmosphereMaterial = new THREE.ShaderMaterial({
+      vertexShader: atmosphereVertexShader,
+      fragmentShader: atmosphereFragmentShader,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true,
+    });
+    this.atmosphereMesh = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+    this.atmosphereMesh.renderOrder = 2;
+    scene.add(this.atmosphereMesh);
+  }
+
+  private createClouds(scene: THREE.Scene): void {
+    const radius = this.config.size || EARTH_RADIUS;
+    const cloudGeometry = new THREE.SphereGeometry(radius + CLOUD_LAYER_OFFSET, 128, 128);
+    const textureLoader = new THREE.TextureLoader();
+    const cloudTexture = textureLoader.load(
+      "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png"
+    );
+    const cloudMaterial = new THREE.MeshBasicMaterial({
+      map: cloudTexture,
+      alphaMap: cloudTexture,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.7,
+    });
+    this.cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    this.cloudMesh.renderOrder = 1;
+    scene.add(this.cloudMesh);
+  }
+
   private applyDefaultLayers(): void {
     if (this.config.layers) {
       this.setLayers(this.config.layers);
@@ -321,6 +366,12 @@ export class Earth {
       if (waterMaterial.uniforms && waterMaterial.uniforms.uTime) {
         waterMaterial.uniforms.uTime.value = time;
       }
+    }
+
+    // Update clouds rotation
+    if (this.cloudMesh) {
+      this.cloudMesh.rotation.y += 0.0005;
+      this.cloudMesh.rotation.x += 0.0002;
     }
 
     // Apply rotation if configured
@@ -480,6 +531,20 @@ export class Earth {
       this.waterMesh.geometry.dispose();
       if (this.waterMesh.material instanceof THREE.Material) {
         this.waterMesh.material.dispose();
+      }
+    }
+
+    if (this.cloudMesh) {
+      this.cloudMesh.geometry.dispose();
+      if (this.cloudMesh.material instanceof THREE.Material) {
+        this.cloudMesh.material.dispose();
+      }
+    }
+
+    if (this.atmosphereMesh) {
+      this.atmosphereMesh.geometry.dispose();
+      if (this.atmosphereMesh.material instanceof THREE.Material) {
+        this.atmosphereMesh.material.dispose();
       }
     }
 

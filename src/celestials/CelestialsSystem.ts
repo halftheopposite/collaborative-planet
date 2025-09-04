@@ -1,7 +1,5 @@
 import * as THREE from "three";
 import {
-  CLOUD_LAYER_OFFSET,
-  EARTH_RADIUS,
   MARS_A,
   MARS_B,
   MARS_K,
@@ -15,8 +13,6 @@ import {
   SUN_B,
   SUN_K,
 } from "../constants";
-import atmosphereFragmentShader from "../shaders/atmosphere.frag.glsl";
-import atmosphereVertexShader from "../shaders/atmosphere.vert.glsl";
 import type { MarsConfig, MoonConfig, SaturnConfig, SunConfig } from "./bodies";
 import { Mars, Moon, Saturn, Sun } from "./bodies";
 
@@ -25,13 +21,9 @@ export class CelestialsSystem {
   private moon: Moon | null = null;
   private mars: Mars | null = null;
   private saturn: Saturn | null = null;
-  private cloudMesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
-  private atmosphereMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> | null = null;
 
   public create(scene: THREE.Scene): void {
     this.createStars(scene);
-    this.createClouds(scene);
-    this.createAtmosphere(scene);
     this.createCelestialBodies(scene);
   }
 
@@ -103,38 +95,6 @@ export class CelestialsSystem {
     this.moon.create(scene);
   }
 
-  private createAtmosphere(scene: THREE.Scene): void {
-    const atmosphereGeometry = new THREE.SphereGeometry(EARTH_RADIUS + 5, 128, 128);
-    const atmosphereMaterial = new THREE.ShaderMaterial({
-      vertexShader: atmosphereVertexShader,
-      fragmentShader: atmosphereFragmentShader,
-      blending: THREE.AdditiveBlending,
-      side: THREE.BackSide,
-      transparent: true,
-    });
-    this.atmosphereMesh = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-    this.atmosphereMesh.renderOrder = 2;
-    scene.add(this.atmosphereMesh);
-  }
-
-  private createClouds(scene: THREE.Scene): void {
-    const cloudGeometry = new THREE.SphereGeometry(EARTH_RADIUS + CLOUD_LAYER_OFFSET, 128, 128);
-    const textureLoader = new THREE.TextureLoader();
-    const cloudTexture = textureLoader.load(
-      "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png"
-    );
-    const cloudMaterial = new THREE.MeshBasicMaterial({
-      map: cloudTexture,
-      alphaMap: cloudTexture,
-      transparent: true,
-      depthWrite: false,
-      opacity: 0.7,
-    });
-    this.cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-    this.cloudMesh.renderOrder = 1;
-    scene.add(this.cloudMesh);
-  }
-
   private createStars(scene: THREE.Scene): void {
     const vertices: number[] = [];
     const minDistance = 600; // Minimum distance from center (outside sun's orbit)
@@ -166,12 +126,6 @@ export class CelestialsSystem {
     if (this.saturn) this.saturn.update(time, dt);
     if (this.mars) this.mars.update(time, dt);
     if (this.moon) this.moon.update(time, dt);
-
-    // Update clouds
-    if (this.cloudMesh) {
-      this.cloudMesh.rotation.y += 0.0005;
-      this.cloudMesh.rotation.x += 0.0002;
-    }
   }
 
   // Getters for external access
@@ -196,19 +150,5 @@ export class CelestialsSystem {
     if (this.moon) this.moon.dispose();
     if (this.mars) this.mars.dispose();
     if (this.saturn) this.saturn.dispose();
-
-    if (this.cloudMesh) {
-      this.cloudMesh.geometry.dispose();
-      if (this.cloudMesh.material) {
-        this.cloudMesh.material.dispose();
-      }
-    }
-
-    if (this.atmosphereMesh) {
-      this.atmosphereMesh.geometry.dispose();
-      if (this.atmosphereMesh.material) {
-        this.atmosphereMesh.material.dispose();
-      }
-    }
   }
 }

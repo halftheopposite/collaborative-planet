@@ -30,7 +30,7 @@ function grad(hash: number, x: number, y: number, z: number): number {
   return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
 }
 
-export function perlin3(x: number, y: number, z: number): number {
+function perlin3(x: number, y: number, z: number): number {
   const X = Math.floor(x) & 255;
   const Y = Math.floor(y) & 255;
   const Z = Math.floor(z) & 255;

@@ -14,8 +14,3 @@ export type { MarsConfig } from "../Mars";
 
 export { Saturn } from "../Saturn";
 export type { SaturnConfig } from "../Saturn";
-
-// Earth is standalone and not part of the celestial body system
-// Export from standalone implementation
-export { Earth } from "../Earth";
-export type { EarthConfig } from "../Earth";

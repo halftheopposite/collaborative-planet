@@ -88,6 +88,7 @@ function init() {
   updateControlSpeeds();
   scene.add(new THREE.AmbientLight(0xffffff, 0.1));
   earth = createEarth();
+  earth.create(scene); // Create Earth with clouds and atmosphere in the main scene
   scene.add(earth.mesh);
   createCelestials(scene);
   actionLayer = createActionLayer(earth);

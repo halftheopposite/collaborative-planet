@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { EarthConfig } from "../celestials/Earth";
-import { Earth } from "../celestials/Earth";
+import { Earth as EarthClass } from "../celestials/Earth";
 import {
   EARTH_RADIUS,
   EARTH_SEGMENTS,
@@ -16,9 +16,9 @@ import {
 } from "../constants";
 import type { DisplacedIntersection } from "../utils/raycast";
 
-// Legacy Earth type for backward compatibility
-export type EarthLegacy = {
+export type Earth = {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  create: (scene: THREE.Scene) => void;
   update: (time: number) => void;
   setCursor: (hit: DisplacedIntersection | null) => void;
   intersect: (raycaster: THREE.Raycaster) => DisplacedIntersection | null;
@@ -31,7 +31,7 @@ export type EarthLegacy = {
   onHeightsChanged: (cb: () => void) => () => void;
 };
 
-export function createEarth(): EarthLegacy {
+export function createEarth(): Earth {
   const earthConfig: EarthConfig = {
     size: EARTH_RADIUS,
     segments: EARTH_SEGMENTS,
@@ -48,15 +48,16 @@ export function createEarth(): EarthLegacy {
     rotationSpeed: 0, // No rotation by default
   };
 
-  const earth = new Earth(earthConfig);
+  const earth = new EarthClass(earthConfig);
 
-  // Create the Earth but don't add to scene yet (this is done outside)
-  const scene = new THREE.Scene(); // Temporary scene for creation
-  earth.create(scene);
-
-  // Return legacy-compatible interface
-  return {
-    mesh: earth.getMesh() as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>,
+  // Return interface that defers scene creation
+  const returnObj = {
+    mesh: null as any, // Will be set after create() is called
+    create: (scene: THREE.Scene) => {
+      earth.create(scene);
+      // Update the mesh reference after creation
+      returnObj.mesh = earth.getMesh() as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+    },
     update: (time: number) => earth.update(time),
     setCursor: (hit: DisplacedIntersection | null) => earth.setCursor(hit),
     intersect: (raycaster: THREE.Raycaster) => earth.intersect(raycaster),
@@ -69,11 +70,6 @@ export function createEarth(): EarthLegacy {
     setHeights: (heights: Float32Array | number[]) => earth.setHeights(heights),
     onHeightsChanged: (cb: () => void) => earth.onHeightsChanged(cb),
   };
+
+  return returnObj;
 }
-
-// Export the standalone Earth class for new usage
-export { Earth as EarthClass };
-export type { EarthConfig };
-
-// Keep the original Earth type export for compatibility
-export type { EarthLegacy as Earth };

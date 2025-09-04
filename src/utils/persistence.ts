@@ -50,14 +50,6 @@ export function loadHeightsFromLocalStorage(): Float32Array | null {
   }
 }
 
-export function clearSavedHeights() {
-  try {
-    localStorage.removeItem(LS_KEY);
-  } catch {
-    // ignore
-  }
-}
-
 // Camera persistence
 export type CameraState = {
   version: 1;
@@ -83,14 +75,6 @@ export function loadCameraFromLocalStorage(): CameraState | null {
   } catch (e) {
     console.warn("Failed to load camera:", e);
     return null;
-  }
-}
-
-export function clearSavedCamera() {
-  try {
-    localStorage.removeItem(LS_KEY_CAMERA);
-  } catch {
-    // ignore
   }
 }
 
