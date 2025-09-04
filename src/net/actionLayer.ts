@@ -1,6 +1,6 @@
 import type { Action, ScultAction } from "../actions";
 import { applyAction } from "../actions/apply";
-import type { Earth } from "../earth/earth";
+import type { Earth } from "../celestials/Earth";
 import { LocalLoopbackTransport, type ActionTransport } from "./transport";
 import type { ActionEnvelope } from "./types";
 

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { ScultAction } from "../actions";
 import { directionToScalar } from "../actions";
-import type { Earth } from "../earth/earth";
+import type { Earth } from "../celestials/Earth";
 
 export function applyAction(earth: Earth, action: ScultAction): void {
   switch (action.type) {

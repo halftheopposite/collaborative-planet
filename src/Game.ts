@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import type { ScultAction } from "./actions";
 import { create as createCelestials, update as updateCelestials } from "./celestials";
+import type { EarthConfig } from "./celestials/Earth";
+import { Earth } from "./celestials/Earth";
 import {
   CAMERA_FAR,
   CAMERA_FOV,
@@ -9,11 +11,21 @@ import {
   CAMERA_START_Z,
   CONTROLS_MAX_DISTANCE,
   CONTROLS_MIN_DISTANCE,
+  EARTH_RADIUS,
+  EARTH_SEGMENTS,
+  FOAM_WIDTH,
+  MAX_HEIGHT,
+  MIN_HEIGHT,
   ORBIT_ROTATE_SPEED_FAR,
   ORBIT_ROTATE_SPEED_NEAR,
   SCULPT_RATE_HZ,
+  WATER_LEVEL,
+  WAVE_AMPLITUDE,
+  WAVE_AMPLITUDE_MAX,
+  WAVE_AMPLITUDE_MIN,
+  WAVE_FREQUENCY,
+  WAVE_SPEED,
 } from "./constants";
-import { createEarth, type Earth } from "./earth/earth";
 import { createActionLayer, type ActionLayer } from "./net/actionLayer";
 import {
   loadCameraFromLocalStorage,
@@ -36,7 +48,6 @@ export class Game {
 
   // Input state
   private isPointerDown: boolean = false;
-  private pointerButton: number = -1;
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private lastSculptTime: number = 0;
@@ -113,10 +124,26 @@ export class Game {
   }
 
   private setupGameObjects(): void {
-    // Create Earth
-    this.earth = createEarth();
+    // Create Earth configuration
+    const earthConfig: EarthConfig = {
+      size: EARTH_RADIUS,
+      segments: EARTH_SEGMENTS,
+      minHeight: MIN_HEIGHT,
+      maxHeight: MAX_HEIGHT,
+      waterLevel: WATER_LEVEL,
+      foamWidth: FOAM_WIDTH,
+      waveAmplitude: WAVE_AMPLITUDE,
+      waveAmplitudeMin: WAVE_AMPLITUDE_MIN,
+      waveAmplitudeMax: WAVE_AMPLITUDE_MAX,
+      waveFrequency: WAVE_FREQUENCY,
+      waveSpeed: WAVE_SPEED,
+      exposure: 1.15,
+      rotationSpeed: 0, // No rotation by default
+    };
+
+    // Create Earth directly
+    this.earth = new Earth(earthConfig);
     this.earth.create(this.scene);
-    this.scene.add(this.earth.mesh);
 
     // Create celestials
     createCelestials(this.scene);
@@ -130,9 +157,11 @@ export class Game {
 
     // Load persisted heights if available
     const saved = loadHeightsFromLocalStorage();
+    const mesh = this.earth.getMesh();
     if (
       saved &&
-      saved.length === (this.earth.mesh.geometry.attributes.aHeight as THREE.BufferAttribute).count
+      mesh &&
+      saved.length === (mesh.geometry.attributes.aHeight as THREE.BufferAttribute).count
     ) {
       this.earth.setHeights(saved);
     }
@@ -221,7 +250,6 @@ export class Game {
     // Otherwise, let OrbitControls handle orbit/zoom.
     if (event.button === 0 && (event.altKey || event.ctrlKey)) {
       this.isPointerDown = true;
-      this.pointerButton = event.button;
       this.isSculpting = true;
       this.sculptDirection = event.altKey ? -1 : 1; // Alt/Option lowers; Ctrl raises
       this.controls.enabled = false; // avoid rotating while sculpting
@@ -244,7 +272,6 @@ export class Game {
     } else if (event.button === 0 || event.button === 1 || event.button === 2) {
       // Non-sculpt pointer down paths still tracked for state, but OrbitControls handles movement.
       this.isPointerDown = true;
-      this.pointerButton = event.button;
       // Orbit drag cursor
       this.renderer.domElement.style.cursor = "grabbing";
     }
@@ -252,7 +279,6 @@ export class Game {
 
   private onPointerUp(): void {
     this.isPointerDown = false;
-    this.pointerButton = -1;
     if (this.isSculpting) {
       this.isSculpting = false;
       this.controls.enabled = true;
@@ -362,26 +388,5 @@ export class Game {
 
     // Clean up controls
     this.controls.dispose();
-  }
-
-  // Getters for accessing core components if needed
-  public getScene(): THREE.Scene {
-    return this.scene;
-  }
-
-  public getCamera(): THREE.PerspectiveCamera {
-    return this.camera;
-  }
-
-  public getRenderer(): THREE.WebGLRenderer {
-    return this.renderer;
-  }
-
-  public getEarth(): Earth | null {
-    return this.earth;
-  }
-
-  public getBirdsSystem() {
-    return this.earth?.getBirdsSystem() ?? null;
   }
 }
