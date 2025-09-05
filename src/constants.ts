@@ -84,14 +84,16 @@ export const FISH_RIPPLE_MAX_RADIUS = 2.0; // Maximum radius of ripple effect
 // Define color layers from MIN_HEIGHT (0) to MAX_HEIGHT (1). Colors can be hex strings or numbers.
 export type Layer = { start: number; color: string | number };
 
-// Defaults approximate the current procedural palette using thresholds mapped to normalized space.
+// Wind Waker inspired color palette with bright, saturated cel-shaded colors
 // You can edit freely; add/remove entries as needed. Ensure the last entry reaches 1.0 for a terminal color.
 export const EARTH_LAYERS: Layer[] = [
-  { start: 0.0, color: "#4D4D59" }, // bedrock
-  { start: 0.1, color: "#D9C79E" }, // sand
-  { start: 0.4, color: "#c78b50" }, // dirt
-  { start: 0.5, color: "#2d8844" }, // green
-  { start: 0.7, color: "#1c582b" }, // dark green
-  { start: 0.8, color: "#626262" }, // snow transition
-  { start: 1.0, color: "#FFFFFF" }, // top snow
+  { start: 0.0, color: "#8B7355" }, // warm brown bedrock
+  { start: 0.15, color: "#F4E4BC" }, // bright creamy sand
+  { start: 0.35, color: "#D4B896" }, // warm tan dirt
+  { start: 0.45, color: "#E8C547" }, // golden grass transition
+  { start: 0.55, color: "#7CB342" }, // bright vibrant green
+  { start: 0.7, color: "#4A7C59" }, // deeper forest green
+  { start: 0.8, color: "#A8C8EC" }, // soft blue-white snow transition
+  { start: 0.9, color: "#E8F4FD" }, // bright white with blue tint
+  { start: 1.0, color: "#FFFFFF" }, // pure white peaks
 ];

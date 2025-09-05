@@ -126,8 +126,8 @@ void main() {
         // Stronger foam on water side (below water level)
         float below = step(vHeight, foamCenter);
         foamMask *= mix(0.7, 1.0, below);
-        // Foam color slightly tinted towards white/blue
-        vec3 foamColor = vec3(0.95, 0.97, 1.0);
+        // Wind Waker inspired foam color - bright white with slight cyan tint
+        vec3 foamColor = vec3(0.98, 1.0, 1.0);
         // Mix additively for sparkle, then clamp
         finalColor = mix(finalColor, foamColor, clamp(foamMask, 0.0, 1.0));
     }

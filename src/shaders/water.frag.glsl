@@ -7,8 +7,8 @@ uniform float uTime;
 uniform float uOpacity;
 
 void main() {
-    // Simple water color
-    vec3 waterColor = vec3(0.04, 0.24, 0.4); // Deep blue
+    // Wind Waker inspired bright blue-green water color
+    vec3 waterColor = vec3(0.2, 0.6, 0.8); // Bright cyan-blue like Wind Waker's ocean
     
     gl_FragColor = vec4(waterColor, uOpacity);
 }
