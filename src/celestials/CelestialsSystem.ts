@@ -13,8 +13,10 @@ import {
   SUN_B,
   SUN_K,
 } from "../constants";
-import type { MarsConfig, MoonConfig, SaturnConfig, SunConfig } from "./bodies";
-import { Mars, Moon, Saturn, Sun } from "./bodies";
+import { Mars, type MarsConfig } from "./Mars";
+import { Moon, type MoonConfig } from "./Moon";
+import { Saturn, type SaturnConfig } from "./Saturn";
+import { Sun, type SunConfig } from "./Sun";
 
 export class CelestialsSystem {
   private sun: Sun | null = null;
