@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {
   EARTH_RADIUS,
+  FISH_FEED_SPEED,
   FISH_RIPPLE_DURATION,
   FISH_RIPPLE_MAX_RADIUS,
   FISH_SCALE,
@@ -35,8 +36,20 @@ export class Fish {
   targetDepth: number;
   underwaterDepth: number;
 
+  // Feeding behavior
+  isFeeding: boolean = false;
+  isEating: boolean = false; // New state for when fish reaches food
+  foodTarget: THREE.Vector3 | null = null;
+  feedingStartTime: number = 0;
+
   // Ripple effect
   currentRipple: Ripple | null = null;
+
+  // Fade effects
+  opacity: number = 0; // Start invisible
+  targetOpacity: number = 1; // Target full opacity
+  fadeSpeed: number = 2.0; // Fade speed (opacity units per second)
+  isVisible: boolean = true;
 
   private tempVector1 = new THREE.Vector3();
   private tempVector2 = new THREE.Vector3();
@@ -67,13 +80,21 @@ export class Fish {
     // Body - longer grey cube (length=3, width=0.8, height=0.8)
     // This creates a clearly elongated body along the X-axis
     const bodyGeometry = new THREE.BoxGeometry(3.0, 0.8, 0.8);
-    const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+    const bodyMaterial = new THREE.MeshBasicMaterial({
+      color: 0x808080,
+      transparent: true,
+      opacity: 0, // Start invisible
+    });
     this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     this.body.position.set(-0.5, 0, 0); // Center the body slightly behind origin
 
     // Head - shorter grey cube (length=1, width=0.8, height=0.8)
     const headGeometry = new THREE.BoxGeometry(1.0, 0.8, 0.8);
-    const headMaterial = new THREE.MeshBasicMaterial({ color: 0x707070 });
+    const headMaterial = new THREE.MeshBasicMaterial({
+      color: 0x707070,
+      transparent: true,
+      opacity: 0, // Start invisible
+    });
     this.head = new THREE.Mesh(headGeometry, headMaterial);
     this.head.position.set(1.5, 0, 0); // Position head in front
 
@@ -82,9 +103,100 @@ export class Fish {
   }
 
   update(time: number, deltaTime: number): void {
+    this.updateFade(deltaTime);
+    this.updateFeedingBehavior(time, deltaTime);
     this.updateSurfaceBehavior(time, deltaTime);
     this.updateMovement(deltaTime);
     this.updateRipple(time);
+  }
+
+  private updateFade(deltaTime: number): void {
+    // Update opacity towards target
+    if (this.opacity !== this.targetOpacity) {
+      const fadeDirection = this.targetOpacity > this.opacity ? 1 : -1;
+      this.opacity += fadeDirection * this.fadeSpeed * deltaTime;
+
+      // Clamp opacity
+      if (fadeDirection > 0 && this.opacity > this.targetOpacity) {
+        this.opacity = this.targetOpacity;
+      } else if (fadeDirection < 0 && this.opacity < this.targetOpacity) {
+        this.opacity = this.targetOpacity;
+      }
+
+      // Update material opacity
+      const bodyMaterial = this.body.material as THREE.MeshBasicMaterial;
+      const headMaterial = this.head.material as THREE.MeshBasicMaterial;
+      bodyMaterial.opacity = this.opacity;
+      headMaterial.opacity = this.opacity;
+
+      // Hide mesh completely when fully transparent
+      this.mesh.visible = this.opacity > 0.01;
+    }
+  }
+
+  private updateFeedingBehavior(time: number, deltaTime: number): void {
+    if ((this.isFeeding || this.isEating) && this.foodTarget) {
+      const distanceToFood = this.position.distanceTo(this.foodTarget);
+      const feedingDuration = time - this.feedingStartTime;
+
+      if (this.isFeeding && distanceToFood < 2.0) {
+        // Fish reached food - switch to eating state
+        this.isFeeding = false;
+        this.isEating = true;
+      }
+
+      // Stop eating if food duration expires (will be handled by FishSystem)
+      // or if we've been trying to reach food for too long
+      if (feedingDuration > 15.0) {
+        this.isFeeding = false;
+        this.isEating = false;
+        this.foodTarget = null;
+        this.feedingStartTime = 0;
+      }
+    }
+  }
+
+  public startFeeding(foodPosition: THREE.Vector3, currentTime: number): void {
+    this.isFeeding = true;
+    this.foodTarget = foodPosition.clone();
+    this.feedingStartTime = currentTime;
+
+    // Stop any current surface behavior
+    this.isSurfacing = false;
+    this.isAtSurface = false;
+  }
+
+  public stopFeeding(): void {
+    this.isFeeding = false;
+    this.isEating = false;
+    this.foodTarget = null;
+    this.feedingStartTime = 0;
+  }
+
+  public isCurrentlyFeeding(): boolean {
+    return this.isFeeding || this.isEating;
+  }
+
+  public isCurrentlyEating(): boolean {
+    return this.isEating;
+  }
+
+  public fadeIn(): void {
+    this.targetOpacity = 1.0;
+    this.isVisible = true;
+  }
+
+  public fadeOut(): void {
+    this.targetOpacity = 0.0;
+  }
+
+  public isFullyFaded(): boolean {
+    return this.opacity <= 0.01 && this.targetOpacity <= 0.01;
+  }
+
+  public setVisible(visible: boolean): void {
+    this.isVisible = visible;
+    this.targetOpacity = visible ? 1.0 : 0.0;
   }
 
   private updateSurfaceBehavior(time: number, deltaTime: number): void {
@@ -135,36 +247,82 @@ export class Fish {
   }
 
   private updateMovement(deltaTime: number): void {
-    // Add gradual turning (left/right relative to fish)
     const up = this.tempVector1.copy(this.position).normalize(); // Earth surface normal
     const right = this.tempVector2.crossVectors(this.forward, up).normalize();
 
-    // Apply turning
-    const turnAmount = this.turnRate * deltaTime;
-    this.forward.applyAxisAngle(up, turnAmount);
-    this.forward.normalize();
+    // Different movement logic based on behavior
+    if (this.isEating && this.foodTarget) {
+      // EATING BEHAVIOR: Stay at food location, minimal movement
+      const foodDirection = this.tempVector3.copy(this.foodTarget).sub(this.position);
+      const distanceToFood = foodDirection.length();
 
-    // Choose speed based on behavior
-    const speed = this.isSurfacing || this.isAtSurface ? FISH_SURFACE_SPEED : FISH_SPEED;
-    const moveDistance = speed * deltaTime;
-    this.position.add(this.tempVector3.copy(this.forward).multiplyScalar(moveDistance));
+      if (distanceToFood > 1.5) {
+        // If we've drifted away, move back toward food slowly
+        foodDirection.normalize();
+        this.forward.lerp(foodDirection, 2.0 * deltaTime);
+        this.forward.normalize();
 
-    // Adjust depth based on behavior
-    const currentRadius = this.position.length();
-    if (this.isSurfacing || this.isAtSurface) {
-      // Move towards target depth
-      const targetRadius = this.targetDepth;
-      const radiusDiff = targetRadius - currentRadius;
-      if (Math.abs(radiusDiff) > 0.1) {
-        const adjustmentSpeed = 0.5 * deltaTime;
-        const newRadius = currentRadius + Math.sign(radiusDiff) * adjustmentSpeed;
-        this.position.normalize().multiplyScalar(newRadius);
+        const speed = FISH_SPEED * 0.5; // Slow approach to food
+        const moveDistance = speed * deltaTime;
+        this.position.add(this.tempVector3.copy(this.forward).multiplyScalar(moveDistance));
       } else {
-        this.position.normalize().multiplyScalar(targetRadius);
+        // Stay near food, just gentle bobbing/circling movement
+        const circleSpeed = 0.2 * deltaTime;
+        this.forward.applyAxisAngle(up, circleSpeed);
+        this.forward.normalize();
+
+        const gentleMove = FISH_SPEED * 0.1 * deltaTime;
+        this.position.add(this.tempVector3.copy(this.forward).multiplyScalar(gentleMove));
       }
+
+      // Stay at water surface level for eating
+      const waterSurfaceRadius = EARTH_RADIUS + WATER_LEVEL + 0.5;
+      this.position.normalize().multiplyScalar(waterSurfaceRadius);
+    } else if (this.isFeeding && this.foodTarget) {
+      // FEEDING BEHAVIOR: Swim directly toward food
+      const foodDirection = this.tempVector3.copy(this.foodTarget).sub(this.position).normalize();
+
+      // Blend current forward direction with food direction for smooth turning
+      this.forward.lerp(foodDirection, 3.0 * deltaTime); // Fast turning toward food
+      this.forward.normalize();
+
+      // Swim faster when feeding
+      const speed = FISH_FEED_SPEED;
+      const moveDistance = speed * deltaTime;
+      this.position.add(this.tempVector3.copy(this.forward).multiplyScalar(moveDistance));
+
+      // Move toward food depth (water surface level)
+      const waterSurfaceRadius = EARTH_RADIUS + WATER_LEVEL + 0.5;
+      this.position.normalize().multiplyScalar(waterSurfaceRadius);
     } else {
-      // Keep fish at underwater depth
-      this.position.normalize().multiplyScalar(this.underwaterDepth);
+      // NORMAL BEHAVIOR: Regular swimming and surfacing
+      // Add gradual turning (left/right relative to fish)
+      const turnAmount = this.turnRate * deltaTime;
+      this.forward.applyAxisAngle(up, turnAmount);
+      this.forward.normalize();
+
+      // Choose speed based on behavior
+      const speed = this.isSurfacing || this.isAtSurface ? FISH_SURFACE_SPEED : FISH_SPEED;
+      const moveDistance = speed * deltaTime;
+      this.position.add(this.tempVector3.copy(this.forward).multiplyScalar(moveDistance));
+
+      // Adjust depth based on behavior
+      const currentRadius = this.position.length();
+      if (this.isSurfacing || this.isAtSurface) {
+        // Move towards target depth
+        const targetRadius = this.targetDepth;
+        const radiusDiff = targetRadius - currentRadius;
+        if (Math.abs(radiusDiff) > 0.1) {
+          const adjustmentSpeed = 0.5 * deltaTime;
+          const newRadius = currentRadius + Math.sign(radiusDiff) * adjustmentSpeed;
+          this.position.normalize().multiplyScalar(newRadius);
+        } else {
+          this.position.normalize().multiplyScalar(targetRadius);
+        }
+      } else {
+        // Keep fish at underwater depth
+        this.position.normalize().multiplyScalar(this.underwaterDepth);
+      }
     }
 
     // Update mesh position first
@@ -173,8 +331,8 @@ export class Fish {
     // Always update orientation after movement to ensure fish faces forward direction
     this.updateOrientation();
 
-    // Occasionally change turning tendency
-    if (Math.random() < 0.01) {
+    // Occasionally change turning tendency (only when not feeding or eating)
+    if (!this.isFeeding && !this.isEating && Math.random() < 0.01) {
       // 1% chance per frame
       this.turnRate = (Math.random() - 0.5) * 0.3;
     }

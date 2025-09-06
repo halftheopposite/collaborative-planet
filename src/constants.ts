@@ -80,6 +80,12 @@ export const FISH_SURFACE_DURATION = 2.0; // How long to stay at surface (second
 export const FISH_RIPPLE_DURATION = 1.0; // Duration of surface ripple effect (seconds)
 export const FISH_RIPPLE_MAX_RADIUS = 2.0; // Maximum radius of ripple effect
 
+// Fish feeding system
+export const FOOD_ATTRACT_RADIUS = 15.0; // Radius within which fish are attracted to food
+export const FOOD_DURATION = 10.0; // How long food lasts before disappearing (seconds)
+export const FISH_FEED_SPEED = 4.0; // Speed when swimming toward food (faster than normal)
+export const FOOD_SCALE = 0.5; // Size of food particles
+
 // --- Earth material layers (normalized 0..1) ---
 // Define color layers from MIN_HEIGHT (0) to MAX_HEIGHT (1). Colors can be hex strings or numbers.
 export type Layer = { start: number; color: string | number };

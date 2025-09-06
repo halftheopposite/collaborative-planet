@@ -53,6 +53,7 @@ export class Game {
   private lastSculptTime: number = 0;
   private isSculpting: boolean = false;
   private sculptDirection: 1 | -1 = 1; // 1 = raise, -1 = lower
+  private isAKeyPressed: boolean = false; // Track A key state
 
   // Timing
   private lastTime = 0;
@@ -216,6 +217,10 @@ export class Game {
     window.addEventListener("resize", this.onWindowResize.bind(this));
     window.addEventListener("beforeunload", this.onBeforeUnload.bind(this));
 
+    // Keyboard events
+    window.addEventListener("keydown", this.onKeyDown.bind(this));
+    window.addEventListener("keyup", this.onKeyUp.bind(this));
+
     // Pointer events
     this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown.bind(this));
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp.bind(this));
@@ -244,11 +249,33 @@ export class Game {
   }
 
   private onPointerDown(event: PointerEvent): void {
-    // Sculpt only when holding a modifier with LEFT button:
-    // - Ctrl + Left: raise (up)
-    // - Alt/Option + Left: lower (down)
+    // Check for different input combinations:
+    // - A + Left: drop food for fish
+    // - Ctrl + Left: raise terrain (up)
+    // - Alt/Option + Left: lower terrain (down)
     // Otherwise, let OrbitControls handle orbit/zoom.
-    if (event.button === 0 && (event.altKey || event.ctrlKey)) {
+    if (event.button === 0 && this.isAKeyPressed) {
+      // A + Left Click: Drop food for fish
+      this.isPointerDown = true;
+      this.controls.enabled = false; // avoid rotating while dropping food
+
+      this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const intersect = this.earth?.intersect(this.raycaster) ?? null;
+
+      if (intersect && this.earth) {
+        const fishSystem = this.earth.getFishSystem();
+        if (fishSystem) {
+          fishSystem.dropFood(intersect.point, this.clock.getElapsedTime());
+          console.log("🐟 Food dropped! Fish will swim toward it.");
+        }
+      }
+      this.renderer.domElement.style.cursor = "crosshair";
+    } else if (event.button === 0 && (event.altKey || event.ctrlKey)) {
+      // Sculpt only when holding a modifier with LEFT button:
+      // - Ctrl + Left: raise (up)
+      // - Alt/Option + Left: lower (down)
       this.isPointerDown = true;
       this.isSculpting = true;
       this.sculptDirection = event.altKey ? -1 : 1; // Alt/Option lowers; Ctrl raises
@@ -282,6 +309,9 @@ export class Game {
     if (this.isSculpting) {
       this.isSculpting = false;
       this.controls.enabled = true;
+    } else if (!this.controls.enabled) {
+      // Re-enable controls if they were disabled (e.g., during food dropping)
+      this.controls.enabled = true;
     }
     // Restore default cursor after drag
     this.renderer.domElement.style.cursor = "grab";
@@ -296,6 +326,18 @@ export class Game {
     this.earth?.setCursor(null);
     // Reset cursor when leaving canvas
     if (!this.isPointerDown) this.renderer.domElement.style.cursor = "grab";
+  }
+
+  private onKeyDown(event: KeyboardEvent): void {
+    if (event.key === "a" || event.key === "A") {
+      this.isAKeyPressed = true;
+    }
+  }
+
+  private onKeyUp(event: KeyboardEvent): void {
+    if (event.key === "a" || event.key === "A") {
+      this.isAKeyPressed = false;
+    }
   }
 
   private onBeforeUnload(): void {

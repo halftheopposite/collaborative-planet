@@ -18,7 +18,9 @@ The original `index.ts` now simply creates and starts a Game instance, providing
 ### Key Features
 
 - **Terrain Sculpting**: Ctrl+click to raise, Alt+click to lower terrain
+- **Fish Feeding**: A+click to drop food in water, watch fish swim toward it!
 - **Orbital Camera**: Mouse controls for orbiting around the planet
 - **Persistence**: Automatic saving of camera position and terrain modifications
 - **Multi-body System**: Earth, Moon, Mars, Saturn, and Sun with realistic movement
 - **Birds**: Flocking behavior system that interacts with the terrain
+- **Fish**: Swimming fish with surface ripple effects and feeding behavior
